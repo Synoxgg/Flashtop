@@ -283,6 +283,71 @@
     .store-badge.playstore i { color: #00e676; }
     .store-badge.appstore i { color: #fff; }
 
+    /* === NEW: Game Banners Slider 2:1 Auto Swipe === */
+    .game-info-card {
+      flex-direction: column !important;
+      align-items: stretch !important;
+    }
+    .game-info-main {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      width: 100%;
+    }
+    .game-banner-slider-wrap {
+      width: 100%;
+      margin-top: 14px;
+      display: none;
+    }
+    .game-banner-slider {
+      width: 100%;
+      aspect-ratio: 2 / 1;
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .game-banner-track {
+      display: flex;
+      height: 100%;
+      width: 100%;
+      transition: transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+      will-change: transform;
+    }
+    .game-banner-slide {
+      min-width: 100%;
+      height: 100%;
+      flex-shrink: 0;
+      position: relative;
+    }
+    .game-banner-slide img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      pointer-events: none;
+    }
+    .game-banner-dots {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .game-banner-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.25);
+      transition: all 0.3s ease;
+    }
+    .game-banner-dot.active {
+      background: var(--primary);
+      width: 18px;
+      border-radius: 10px;
+    }
+
+
 
     .progress-wrap { margin-bottom: 25px; padding: 0 10px; }
     .progress-container {
@@ -1038,18 +1103,27 @@
     </div>
 
     <div class="game-info-card">
-      <img src="bgmi.webp" id="dispGameLogo" alt="Game Logo" class="game-info-logo" draggable="false" style="pointer-events: auto !important;">
-      <div class="game-info-details">
-        <div class="game-info-title" id="dispGameTitle">Battlegrounds Mobile India</div>
-        <div class="game-info-publisher"><i class="fa-solid fa-building"></i> <span id="dispGamePublisher">KRAFTON, Inc.</span></div>
-        <div class="store-links">
-          <a href="https://play.google.com/store/apps/details?id=com.pubg.imobile" id="dispPlayStoreLink" target="_blank" rel="noopener" class="store-badge playstore">
-            <i class="fab fa-google-play"></i> Google Play
-          </a>
-          <a href="https://apps.apple.com/in/app/bgmi-battlegrounds-mobile-india/id1526436837" id="dispAppStoreLink" target="_blank" rel="noopener" class="store-badge appstore">
-            <i class="fab fa-apple"></i> App Store
-          </a>
+      <div class="game-info-main">
+        <img src="bgmi.webp" id="dispGameLogo" alt="Game Logo" class="game-info-logo" draggable="false" style="pointer-events: auto !important;">
+        <div class="game-info-details">
+          <div class="game-info-title" id="dispGameTitle">Battlegrounds Mobile India</div>
+          <div class="game-info-publisher"><i class="fa-solid fa-building"></i> <span id="dispGamePublisher">KRAFTON, Inc.</span></div>
+          <div class="store-links">
+            <a href="https://play.google.com/store/apps/details?id=com.pubg.imobile" id="dispPlayStoreLink" target="_blank" rel="noopener" class="store-badge playstore">
+              <i class="fab fa-google-play"></i> Google Play
+            </a>
+            <a href="https://apps.apple.com/in/app/bgmi-battlegrounds-mobile-india/id1526436837" id="dispAppStoreLink" target="_blank" rel="noopener" class="store-badge appstore">
+              <i class="fab fa-apple"></i> App Store
+            </a>
+          </div>
         </div>
+      </div>
+      <!-- NEW: 2:1 Auto Swipe Banners Slider -->
+      <div class="game-banner-slider-wrap" id="gameBannerSliderWrap">
+        <div class="game-banner-slider" id="gameBannerSlider">
+          <div class="game-banner-track" id="gameBannerTrack"></div>
+        </div>
+        <div class="game-banner-dots" id="gameBannerDots"></div>
       </div>
     </div>
 
@@ -1629,6 +1703,18 @@
                   <label style="font-size:11px; color:#aaa; margin-bottom:5px; display:block;">App Store Link</label>
                   <input type="text" id="adminAppStoreLink" class="form-input" placeholder="https://apps.apple.com/..." style="font-size:12px; padding:10px;">
               </div>
+
+              <!-- NEW: Game Banners 2:1 Slider Control -->
+              <div style="background: rgba(255,184,0,0.08); padding: 12px; border-radius: 10px; border:1px solid rgba(255,184,0,0.15); margin-top:5px;">
+                  <label style="font-size:12px; color:#fff; font-weight:700; margin-bottom:8px; display:block;">📸 Game Banners - 2:1 Auto Swipe Slider</label>
+                  <p style="font-size:10px; color:#aaa; margin-bottom:10px; line-height:1.4;">BGMI logo ke neeche 2:1 ratio ki images dikhengi, ek ke baad ek automatic swipe hogi. Yahan se upload/delete kar sakte ho.</p>
+                  <div id="adminGameBannersList" style="display:flex; flex-direction:column; gap:8px; margin-bottom:10px;"></div>
+                  <input type="file" id="adminGameBannersInput" accept="image/*" multiple style="font-size:11px; color:#ccc; width:100%; margin-bottom:8px;" onchange="handleGameBannersUpload(event)">
+                  <div style="display:flex; gap:8px;">
+                    <button type="button" onclick="document.getElementById('adminGameBannersInput').click()" style="flex:1; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12); color:#fff; padding:8px; border-radius:8px; font-size:12px; cursor:pointer;"><i class="fas fa-plus"></i> Add Images</button>
+                    <button type="button" onclick="clearAllGameBanners()" style="background:rgba(255,71,87,0.15); border:1px solid rgba(255,71,87,0.3); color:#ff4757; padding:8px 12px; border-radius:8px; font-size:12px; cursor:pointer;"><i class="fas fa-trash"></i> Clear All</button>
+                  </div>
+              </div>
           </div>
 
           <h4 class="admin-section-title">⚖️ Payment Setup</h4>
@@ -2187,7 +2273,8 @@
             publisher: "KRAFTON, Inc.",
             logo: "bgmi.webp",
             playStoreLink: "https://play.google.com/store/apps/details?id=com.pubg.imobile",
-            appStoreLink: "https://apps.apple.com/in/app/bgmi-battlegrounds-mobile-india/id1526436837"
+            appStoreLink: "https://apps.apple.com/in/app/bgmi-battlegrounds-mobile-india/id1526436837",
+            banners: []
         },
         faqs: [
             { q: "How does the UC top-up work?", a: "Enter your BGMI User ID on this page, choose a UC pack, and finish the payment. The UC will be added directly to your in-game account. No redemption code required." },
@@ -2291,6 +2378,8 @@
     
     if(!window.siteConfig.gameInfo) window.siteConfig.gameInfo = defaultAdminConfig.gameInfo;
     for(let k in defaultAdminConfig.gameInfo) { if(window.siteConfig.gameInfo[k] === undefined) window.siteConfig.gameInfo[k] = defaultAdminConfig.gameInfo[k]; }
+    // NEW: Ensure banners is array
+    if(!Array.isArray(window.siteConfig.gameInfo.banners)) window.siteConfig.gameInfo.banners = [];
     
     if(!window.siteConfig.texts) window.siteConfig.texts = defaultAdminConfig.texts;
     for(let k in defaultAdminConfig.texts) { if(window.siteConfig.texts[k] === undefined) window.siteConfig.texts[k] = defaultAdminConfig.texts[k]; }
@@ -2523,6 +2612,159 @@
         reader.readAsDataURL(file);
     };
 
+
+    // === NEW: Game Banners 2:1 Slider Logic ===
+    window.gameBannerInterval = null;
+    window.currentBannerIndex = 0;
+
+    window.renderGameBanners = function() {
+        try {
+            var wrap = document.getElementById('gameBannerSliderWrap');
+            var track = document.getElementById('gameBannerTrack');
+            var dots = document.getElementById('gameBannerDots');
+            if(!wrap || !track || !dots) return;
+
+            var gi = window.siteConfig.gameInfo || {};
+            var banners = gi.banners || [];
+            // Filter valid
+            banners = banners.filter(b => b && b.length > 10);
+
+            if(banners.length === 0) {
+                wrap.style.display = 'none';
+                track.innerHTML = '';
+                dots.innerHTML = '';
+                if(window.gameBannerInterval) { clearInterval(window.gameBannerInterval); window.gameBannerInterval = null; }
+                return;
+            }
+
+            wrap.style.display = 'block';
+            // Build slides
+            track.innerHTML = banners.map(src => `<div class="game-banner-slide"><img src="${src}" alt="Game Banner" draggable="false" loading="lazy"></div>`).join('');
+            dots.innerHTML = banners.map((_,i) => `<div class="game-banner-dot ${i===0?'active':''}" data-idx="${i}"></div>`).join('');
+
+            window.currentBannerIndex = 0;
+            track.style.transform = 'translateX(0%)';
+
+            // Auto swipe
+            if(window.gameBannerInterval) clearInterval(window.gameBannerInterval);
+            if(banners.length > 1) {
+                window.gameBannerInterval = setInterval(() => {
+                    window.currentBannerIndex = (window.currentBannerIndex + 1) % banners.length;
+                    track.style.transform = `translateX(-${window.currentBannerIndex * 100}%)`;
+                    // update dots
+                    dots.querySelectorAll('.game-banner-dot').forEach((d,idx)=>{
+                        d.classList.toggle('active', idx===window.currentBannerIndex);
+                    });
+                }, 3000);
+            }
+
+            // Click dots to navigate
+            dots.querySelectorAll('.game-banner-dot').forEach(dot=>{
+                dot.addEventListener('click', function(){
+                    var idx = parseInt(this.dataset.idx);
+                    window.currentBannerIndex = idx;
+                    track.style.transform = `translateX(-${idx * 100}%)`;
+                    dots.querySelectorAll('.game-banner-dot').forEach((d,i)=> d.classList.toggle('active', i===idx));
+                });
+            });
+
+            // Swipe touch support
+            let startX = 0;
+            track.addEventListener('touchstart', e=> { startX = e.touches[0].clientX; }, {passive:true});
+            track.addEventListener('touchend', e=> {
+                let endX = e.changedTouches[0].clientX;
+                let diff = startX - endX;
+                if(Math.abs(diff) > 40) {
+                    if(diff > 0) { // next
+                        window.currentBannerIndex = (window.currentBannerIndex + 1) % banners.length;
+                    } else {
+                        window.currentBannerIndex = (window.currentBannerIndex - 1 + banners.length) % banners.length;
+                    }
+                    track.style.transform = `translateX(-${window.currentBannerIndex * 100}%)`;
+                    dots.querySelectorAll('.game-banner-dot').forEach((d,i)=> d.classList.toggle('active', i===window.currentBannerIndex));
+                }
+            }, {passive:true});
+
+        } catch(e) { console.log('renderGameBanners error', e); }
+    };
+
+    window.renderAdminGameBannersList = function() {
+        var listEl = document.getElementById('adminGameBannersList');
+        if(!listEl) return;
+        var banners = (window.siteConfig.gameInfo && window.siteConfig.gameInfo.banners) || [];
+        if(banners.length === 0) {
+            listEl.innerHTML = '<div style="font-size:11px; color:#777; padding:8px; background:rgba(255,255,255,0.03); border-radius:6px; text-align:center;">No banners added yet. 2:1 images upload karo.</div>';
+            return;
+        }
+        listEl.innerHTML = banners.map((src, idx) => `
+            <div style="display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.05); padding:6px; border-radius:8px; border:1px solid rgba(255,255,255,0.08);">
+                <img src="${src}" style="width:60px; height:30px; object-fit:cover; border-radius:4px; flex-shrink:0; border:1px solid rgba(255,255,255,0.1);">
+                <span style="flex:1; font-size:10px; color:#aaa;">Banner ${idx+1} - 2:1</span>
+                <button onclick="deleteGameBanner(${idx})" style="background:rgba(255,71,87,0.2); border:1px solid rgba(255,71,87,0.3); color:#ff4757; padding:4px 8px; border-radius:6px; cursor:pointer; font-size:11px;"><i class="fas fa-times"></i></button>
+            </div>
+        `).join('');
+    };
+
+    window.deleteGameBanner = function(idx) {
+        if(!window.siteConfig.gameInfo) window.siteConfig.gameInfo = {};
+        if(!Array.isArray(window.siteConfig.gameInfo.banners)) window.siteConfig.gameInfo.banners = [];
+        window.siteConfig.gameInfo.banners.splice(idx, 1);
+        window.renderAdminGameBannersList();
+        window.renderGameBanners();
+    };
+
+    window.clearAllGameBanners = function() {
+        if(!confirm('Saare banners delete karne hain?')) return;
+        if(!window.siteConfig.gameInfo) window.siteConfig.gameInfo = {};
+        window.siteConfig.gameInfo.banners = [];
+        window.renderAdminGameBannersList();
+        window.renderGameBanners();
+    };
+
+    window.handleGameBannersUpload = function(event) {
+        var files = event.target.files;
+        if(!files || files.length === 0) return;
+        if(!window.siteConfig.gameInfo) window.siteConfig.gameInfo = {};
+        if(!Array.isArray(window.siteConfig.gameInfo.banners)) window.siteConfig.gameInfo.banners = [];
+
+        var remaining = files.length;
+        var processed = [];
+
+        Array.from(files).forEach(file => {
+            if(!file.type.startsWith('image/')) { remaining--; return; }
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                var img = new Image();
+                img.onload = function() {
+                    var canvas = document.createElement('canvas');
+                    let width = img.width; let height = img.height;
+                    // For 2:1 banners, keep larger size for quality
+                    const maxSize = 1000;
+                    if (width > maxSize || height > maxSize) {
+                        if (width > height) { height *= maxSize / width; width = maxSize; }
+                        else { width *= maxSize / height; height = maxSize; }
+                    }
+                    canvas.width = width; canvas.height = height;
+                    var ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    var base64 = canvas.toDataURL('image/webp', 0.85);
+                    processed.push(base64);
+                    remaining--;
+                    if(remaining === 0) {
+                        // Add all processed to banners
+                        window.siteConfig.gameInfo.banners = window.siteConfig.gameInfo.banners.concat(processed);
+                        window.renderAdminGameBannersList();
+                        window.renderGameBanners();
+                        // Reset input
+                        event.target.value = '';
+                    }
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    };
+
     window.handleAudioUpload = function(event) {
         const file = event.target.files[0];
         const statusEl = document.getElementById('audioUploadStatus');
@@ -2750,6 +2992,8 @@
             if(dispPlayStore && gi.playStoreLink) dispPlayStore.href = gi.playStoreLink;
             var dispAppStore = document.getElementById('dispAppStoreLink');
             if(dispAppStore && gi.appStoreLink) dispAppStore.href = gi.appStoreLink;
+            // Render banners slider
+            if(typeof window.renderGameBanners === 'function') window.renderGameBanners();
         } catch(e) { console.log('Game info apply error', e); }
 
         // Audio Adjustments
@@ -2893,6 +3137,8 @@
         var elPub = document.getElementById('adminGamePublisher'); if(elPub) elPub.value = gi.publisher || '';
         var elPlay = document.getElementById('adminPlayStoreLink'); if(elPlay) elPlay.value = gi.playStoreLink || '';
         var elApp = document.getElementById('adminAppStoreLink'); if(elApp) elApp.value = gi.appStoreLink || '';
+        // NEW: Render banners list in admin
+        if(typeof window.renderAdminGameBannersList === 'function') window.renderAdminGameBannersList();
 
         document.getElementById('adminRazorpayApi').value = window.siteConfig.razorpayApiUrl === "https://script.google.com/macros/s/AKfycby9ZtsDvV3Aqdg1XIfeEvt3dQQGXNn4inKC04RZjTGNxipHwlDyMhMx5iABq_kEdWKwzg/exec" ? "" : window.siteConfig.razorpayApiUrl || '';
         document.getElementById('adminNightStart').value = window.siteConfig.shopTiming.startHour !== undefined ? window.siteConfig.shopTiming.startHour : 0;
