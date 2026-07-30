@@ -2617,24 +2617,25 @@
     };
 
 
-    // === NEW: Game Banners 2:1 Slider Logic - FIXED ===
+        // === NEW: Game Banners 2:1 Slider Logic - INFINITE LOOP VERSION ===
     window.gameBannerInterval = null;
-    window.currentBannerIndex = 0;
+    window.currentBannerIndex = 1;
     window._bannerTouchStartX = 0;
     window._bannerIsDragging = false;
+    window._bannerRealCount = 0;
+    window._isTransitioning = false;
 
     window.updateBannerPosition = function() {
         var track = document.getElementById('gameBannerTrack');
         if(!track) return;
-        // Use percentage - always moves exactly 1 full slide, no half-half even if image is wide
         track.style.transform = 'translateX(-' + (window.currentBannerIndex * 100) + '%)';
     };
 
     window.renderGameBanners = function() {
         try {
             var wrap = document.getElementById('gameBannerSliderWrap');
-            var track = document.getElementById('gameBannerTrack');
-            if(!wrap || !track) return;
+            var oldTrack = document.getElementById('gameBannerTrack');
+            if(!wrap || !oldTrack) return;
 
             var gi = window.siteConfig.gameInfo || {};
             var banners = gi.banners || [];
@@ -2642,42 +2643,80 @@
 
             if(banners.length === 0) {
                 wrap.style.display = 'none';
-                track.innerHTML = '';
+                oldTrack.innerHTML = '';
                 if(window.gameBannerInterval) { clearInterval(window.gameBannerInterval); window.gameBannerInterval = null; }
+                window._bannerRealCount = 0;
                 return;
             }
 
             wrap.style.display = 'block';
-            // Build slides - each 100% width
-            track.innerHTML = banners.map(src => `<div class="game-banner-slide"><img src="${src}" alt="Game Banner" draggable="false" loading="lazy"></div>`).join('');
-            window.currentBannerIndex = 0;
-            
-            // Force layout then set position
-            requestAnimationFrame(() => {
-                window.updateBannerPosition();
+            if(window.gameBannerInterval) { clearInterval(window.gameBannerInterval); window.gameBannerInterval = null; }
+
+            // Create fresh track to remove old listeners
+            var track = oldTrack.cloneNode(false);
+            track.id = 'gameBannerTrack';
+            track.className = oldTrack.className;
+            oldTrack.parentNode.replaceChild(track, oldTrack);
+
+            if(banners.length === 1) {
+                // Single image - no loop needed
+                track.innerHTML = `<div class="game-banner-slide"><img src="${banners[0]}" alt="Game Banner" draggable="false" loading="lazy"></div>`;
+                track.style.transition = 'none';
+                track.style.transform = 'translateX(0%)';
+                window.currentBannerIndex = 0;
+                window._bannerRealCount = 1;
+                window._isTransitioning = false;
+                return;
+            }
+
+            // Infinite loop: [last, ...banners, first]
+            var extended = [];
+            extended.push(banners[banners.length - 1]);
+            extended = extended.concat(banners);
+            extended.push(banners[0]);
+
+            track.innerHTML = extended.map(src => `<div class="game-banner-slide"><img src="${src}" alt="Game Banner" draggable="false" loading="lazy"></div>`).join('');
+            window._bannerRealCount = banners.length;
+            window.currentBannerIndex = 1;
+            window._isTransitioning = false;
+
+            // Initial position without animation
+            track.style.transition = 'none';
+            track.style.transform = 'translateX(-' + (window.currentBannerIndex * 100) + '%)';
+            // Force reflow
+            track.offsetHeight;
+            track.style.transition = 'transform 0.5s ease-in-out';
+
+            // Infinite loop handler - seamless jump when reaching clones
+            track.addEventListener('transitionend', function() {
+                if(window._bannerRealCount <= 1) return;
+                if(window.currentBannerIndex === 0) {
+                    // Jumped to last clone (at start), jump to real last
+                    track.style.transition = 'none';
+                    window.currentBannerIndex = window._bannerRealCount;
+                    track.style.transform = 'translateX(-' + (window.currentBannerIndex * 100) + '%)';
+                    track.offsetHeight;
+                    track.style.transition = 'transform 0.5s ease-in-out';
+                } else if(window.currentBannerIndex === window._bannerRealCount + 1) {
+                    // Jumped to first clone (at end), jump to real first
+                    track.style.transition = 'none';
+                    window.currentBannerIndex = 1;
+                    track.style.transform = 'translateX(-' + (window.currentBannerIndex * 100) + '%)';
+                    track.offsetHeight;
+                    track.style.transition = 'transform 0.5s ease-in-out';
+                }
+                window._isTransitioning = false;
             });
 
-            // Clear old interval
-            if(window.gameBannerInterval) clearInterval(window.gameBannerInterval);
-            
-            // Auto swipe - fixed to move exactly 1 image at a time
-            if(banners.length > 1) {
-                window.gameBannerInterval = setInterval(() => {
-                    window.currentBannerIndex = (window.currentBannerIndex + 1) % banners.length;
-                    window.updateBannerPosition();
-                }, 3500);
-            }
+            // Auto swipe - infinite loop
+            window.gameBannerInterval = setInterval(() => {
+                if(window._isTransitioning) return;
+                window._isTransitioning = true;
+                window.currentBannerIndex++;
+                window.updateBannerPosition();
+            }, 3500);
 
-            // Remove old listeners by cloning track (to avoid multiple listeners)
-            var newTrack = track.cloneNode(true);
-            track.parentNode.replaceChild(newTrack, track);
-            track = document.getElementById('gameBannerTrack');
-            if(!track) {
-                track = newTrack;
-                track.id = 'gameBannerTrack';
-            }
-
-            // Touch / Manual swipe - only 1 image per swipe
+            // Touch swipe
             track.addEventListener('touchstart', function(e) {
                 window._bannerTouchStartX = e.touches[0].clientX;
                 window._bannerIsDragging = true;
@@ -2692,25 +2731,28 @@
                 window._bannerIsDragging = false;
                 var endX = e.changedTouches[0].clientX;
                 var diff = window._bannerTouchStartX - endX;
-                if(Math.abs(diff) > 50) {
+                if(Math.abs(diff) > 50 && !window._isTransitioning) {
+                    window._isTransitioning = true;
                     if(diff > 0) {
-                        window.currentBannerIndex = (window.currentBannerIndex + 1) % banners.length;
+                        window.currentBannerIndex++;
                     } else {
-                        window.currentBannerIndex = (window.currentBannerIndex - 1 + banners.length) % banners.length;
+                        window.currentBannerIndex--;
                     }
                     window.updateBannerPosition();
                 }
                 // Restart auto
-                if(banners.length > 1) {
+                if(window._bannerRealCount > 1) {
                     if(window.gameBannerInterval) clearInterval(window.gameBannerInterval);
                     window.gameBannerInterval = setInterval(() => {
-                        window.currentBannerIndex = (window.currentBannerIndex + 1) % banners.length;
+                        if(window._isTransitioning) return;
+                        window._isTransitioning = true;
+                        window.currentBannerIndex++;
                         window.updateBannerPosition();
                     }, 3500);
                 }
             }, {passive:true});
 
-            // Mouse drag for desktop testing (optional)
+            // Mouse drag for desktop
             var mouseDown = false;
             track.addEventListener('mousedown', function(e) {
                 mouseDown = true;
@@ -2725,18 +2767,21 @@
                 if(!mouseDown) return;
                 mouseDown = false;
                 var diff = window._bannerTouchStartX - e.clientX;
-                if(Math.abs(diff) > 50) {
+                if(Math.abs(diff) > 50 && !window._isTransitioning) {
+                    window._isTransitioning = true;
                     if(diff > 0) {
-                        window.currentBannerIndex = (window.currentBannerIndex + 1) % banners.length;
+                        window.currentBannerIndex++;
                     } else {
-                        window.currentBannerIndex = (window.currentBannerIndex - 1 + banners.length) % banners.length;
+                        window.currentBannerIndex--;
                     }
                     window.updateBannerPosition();
                 }
-                if(banners.length > 1) {
+                if(window._bannerRealCount > 1) {
                     if(window.gameBannerInterval) clearInterval(window.gameBannerInterval);
                     window.gameBannerInterval = setInterval(() => {
-                        window.currentBannerIndex = (window.currentBannerIndex + 1) % banners.length;
+                        if(window._isTransitioning) return;
+                        window._isTransitioning = true;
+                        window.currentBannerIndex++;
                         window.updateBannerPosition();
                     }, 3500);
                 }
@@ -3910,16 +3955,16 @@
       document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
       document.getElementById(`step${step}`).classList.add('active'); currentStep = step; updateProgress();
       
-      // NEW: Show game-info-card only on first page (player details)
+      // UPDATED: Show game-info-card on step 1,2,3 - hide only on step 4 (last page)
       try {
         var gameInfoCard = document.querySelector('.game-info-card');
         if(gameInfoCard) {
-            if(step === 1) {
-                gameInfoCard.style.display = 'flex';
-                // Re-calc banner position when coming back to step 1
-                setTimeout(() => { if(window.updateBannerPosition) window.updateBannerPosition(); }, 100);
-            } else {
+            if(step === 4) {
                 gameInfoCard.style.display = 'none';
+            } else {
+                gameInfoCard.style.display = 'flex';
+                // Re-calc banner position when visible
+                setTimeout(() => { if(window.updateBannerPosition) window.updateBannerPosition(); }, 100);
             }
         }
       } catch(e) {}
@@ -3934,12 +3979,38 @@
           if (globalFAQ) globalFAQ.style.display = getTgl('showFaq') ? 'block' : 'none';
       }
 
-      setTimeout(() => {           const progressWrap = document.querySelector('.progress-wrap');
-          if (progressWrap) {
-              const offset = progressWrap.getBoundingClientRect().top + window.scrollY - 20;
-              window.scrollTo({ top: offset, behavior: 'smooth' });
-          }
-      }, 50);
+      // UPDATED: Scroll to relevant tile instead of progress-wrap
+      setTimeout(() => {
+          try {
+              var targetEl = null;
+              if(step === 1) {
+                  // Player details tile
+                  targetEl = document.getElementById('step1');
+              } else if(step === 2) {
+                  // Select options tile
+                  targetEl = document.getElementById('dispStep2Title') || document.getElementById('step2');
+              } else if(step === 3) {
+                  // Payment section tile
+                  targetEl = document.getElementById('dispStep3Title') || document.getElementById('step3');
+              } else if(step === 4) {
+                  targetEl = document.getElementById('step4');
+              }
+              if(targetEl) {
+                  var headerOffset = 20;
+                  var rect = targetEl.getBoundingClientRect();
+                  var offset = window.scrollY + rect.top - headerOffset;
+                  // If step 1, scroll a bit higher to show game-info-card also
+                  if(step === 1) {
+                      var gameCard = document.querySelector('.game-info-card');
+                      if(gameCard) {
+                          var gRect = gameCard.getBoundingClientRect();
+                          offset = window.scrollY + gRect.top - 10;
+                      }
+                  }
+                  window.scrollTo({ top: Math.max(0, offset), behavior: 'smooth' });
+              }
+          } catch(e) {}
+      }, 100);
     }
 
     function updateProgress(){
