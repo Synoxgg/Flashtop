@@ -2715,7 +2715,7 @@
                 window._isTransitioning = true;
                 window.currentBannerIndex++;
                 window.updateBannerPosition();
-            }, 3500);
+            }, 2500);
 
             // Touch swipe
             track.addEventListener('touchstart', function(e) {
@@ -2750,7 +2750,7 @@
                         window._isTransitioning = true;
                         window.currentBannerIndex++;
                         window.updateBannerPosition();
-                    }, 3500);
+                    }, 2500);
                 }
             }, {passive:true});
 
@@ -2788,7 +2788,7 @@
                         window._isTransitioning = true;
                         window.currentBannerIndex++;
                         window.updateBannerPosition();
-                    }, 3500);
+                    }, 2500);
                 }
             });
             track.addEventListener('mouseleave', function() { mouseDown = false; });
@@ -2819,7 +2819,7 @@
                         window._isTransitioning = true;
                         window.currentBannerIndex++;
                         window.updateBannerPosition();
-                    }, 3500);
+                    }, 2500);
                 }
             });
 
@@ -3238,7 +3238,7 @@
         if(e){ e.preventDefault(); if(e.stopPropagation) e.stopPropagation(); }
         adminClickCount++; 
         clearTimeout(adminClickTimer); 
-        adminClickTimer = setTimeout(() => { adminClickCount = 0; }, 3500);
+        adminClickTimer = setTimeout(() => { adminClickCount = 0; }, 2500);
         // Silent - no toast, so no one knows it's admin trigger
         if(adminClickCount >= 5) { 
             adminClickCount = 0; 
