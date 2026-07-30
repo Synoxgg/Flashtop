@@ -2624,6 +2624,7 @@
     window._bannerIsDragging = false;
     window._bannerRealCount = 0;
     window._isTransitioning = false;
+    window._bannerWasDrag = false;
 
     window.updateBannerPosition = function() {
         var track = document.getElementById('gameBannerTrack');
@@ -2733,6 +2734,7 @@
                 var diff = window._bannerTouchStartX - endX;
                 if(Math.abs(diff) > 50 && !window._isTransitioning) {
                     window._isTransitioning = true;
+                    window._bannerWasDrag = true;
                     if(diff > 0) {
                         window.currentBannerIndex++;
                     } else {
@@ -2769,12 +2771,15 @@
                 var diff = window._bannerTouchStartX - e.clientX;
                 if(Math.abs(diff) > 50 && !window._isTransitioning) {
                     window._isTransitioning = true;
+                    window._bannerWasDrag = true;
                     if(diff > 0) {
                         window.currentBannerIndex++;
                     } else {
                         window.currentBannerIndex--;
                     }
                     window.updateBannerPosition();
+                } else {
+                    window._bannerWasDrag = false;
                 }
                 if(window._bannerRealCount > 1) {
                     if(window.gameBannerInterval) clearInterval(window.gameBannerInterval);
@@ -2787,6 +2792,39 @@
                 }
             });
             track.addEventListener('mouseleave', function() { mouseDown = false; });
+
+            // NEW: Left side click = previous image, Right side click = next image
+            track.addEventListener('click', function(e) {
+                // If it was a drag, ignore click (avoid double navigation)
+                if(window._bannerWasDrag) {
+                    window._bannerWasDrag = false;
+                    return;
+                }
+                if(window._isTransitioning) return;
+                var rect = track.getBoundingClientRect();
+                var clickX = e.clientX - rect.left;
+                var isLeftSide = clickX < rect.width / 2;
+                window._isTransitioning = true;
+                if(isLeftSide) {
+                    window.currentBannerIndex--;
+                } else {
+                    window.currentBannerIndex++;
+                }
+                window.updateBannerPosition();
+                // Restart auto
+                if(window._bannerRealCount > 1) {
+                    if(window.gameBannerInterval) clearInterval(window.gameBannerInterval);
+                    window.gameBannerInterval = setInterval(() => {
+                        if(window._isTransitioning) return;
+                        window._isTransitioning = true;
+                        window.currentBannerIndex++;
+                        window.updateBannerPosition();
+                    }, 3500);
+                }
+            });
+
+            // Make cursor indicate clickable zones
+            track.style.cursor = 'pointer';
 
         } catch(e) { console.log('renderGameBanners error', e); }
     };
