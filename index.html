@@ -328,24 +328,7 @@
       display: block;
       pointer-events: none;
     }
-    .game-banner-dots {
-      display: flex;
-      justify-content: center;
-      gap: 6px;
-      margin-top: 8px;
-    }
-    .game-banner-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.25);
-      transition: all 0.3s ease;
-    }
-    .game-banner-dot.active {
-      background: var(--primary);
-      width: 18px;
-      border-radius: 10px;
-    }
+    /* Dots removed as per request */
 
 
 
@@ -1118,12 +1101,11 @@
           </div>
         </div>
       </div>
-      <!-- NEW: 2:1 Auto Swipe Banners Slider -->
+      <!-- NEW: 2:1 Auto Swipe Banners Slider - Fixed full swipe -->
       <div class="game-banner-slider-wrap" id="gameBannerSliderWrap">
         <div class="game-banner-slider" id="gameBannerSlider">
           <div class="game-banner-track" id="gameBannerTrack"></div>
         </div>
-        <div class="game-banner-dots" id="gameBannerDots"></div>
       </div>
     </div>
 
@@ -2613,80 +2595,142 @@
     };
 
 
-    // === NEW: Game Banners 2:1 Slider Logic ===
+    // === NEW: Game Banners 2:1 Slider Logic - FIXED ===
     window.gameBannerInterval = null;
     window.currentBannerIndex = 0;
+    window._bannerTouchStartX = 0;
+    window._bannerIsDragging = false;
+
+    window.updateBannerPosition = function() {
+        var slider = document.getElementById('gameBannerSlider');
+        var track = document.getElementById('gameBannerTrack');
+        if(!slider || !track) return;
+        var w = slider.offsetWidth;
+        if(w === 0) return;
+        track.style.transform = 'translate3d(-' + (window.currentBannerIndex * w) + 'px, 0, 0)';
+    };
 
     window.renderGameBanners = function() {
         try {
             var wrap = document.getElementById('gameBannerSliderWrap');
             var track = document.getElementById('gameBannerTrack');
-            var dots = document.getElementById('gameBannerDots');
-            if(!wrap || !track || !dots) return;
+            if(!wrap || !track) return;
 
             var gi = window.siteConfig.gameInfo || {};
             var banners = gi.banners || [];
-            // Filter valid
             banners = banners.filter(b => b && b.length > 10);
 
             if(banners.length === 0) {
                 wrap.style.display = 'none';
                 track.innerHTML = '';
-                dots.innerHTML = '';
                 if(window.gameBannerInterval) { clearInterval(window.gameBannerInterval); window.gameBannerInterval = null; }
                 return;
             }
 
             wrap.style.display = 'block';
-            // Build slides
+            // Build slides - each 100% width
             track.innerHTML = banners.map(src => `<div class="game-banner-slide"><img src="${src}" alt="Game Banner" draggable="false" loading="lazy"></div>`).join('');
-            dots.innerHTML = banners.map((_,i) => `<div class="game-banner-dot ${i===0?'active':''}" data-idx="${i}"></div>`).join('');
-
             window.currentBannerIndex = 0;
-            track.style.transform = 'translateX(0%)';
+            
+            // Force layout then set position
+            requestAnimationFrame(() => {
+                window.updateBannerPosition();
+            });
 
-            // Auto swipe
+            // Clear old interval
             if(window.gameBannerInterval) clearInterval(window.gameBannerInterval);
+            
+            // Auto swipe - fixed to move exactly 1 image at a time
             if(banners.length > 1) {
                 window.gameBannerInterval = setInterval(() => {
                     window.currentBannerIndex = (window.currentBannerIndex + 1) % banners.length;
-                    track.style.transform = `translateX(-${window.currentBannerIndex * 100}%)`;
-                    // update dots
-                    dots.querySelectorAll('.game-banner-dot').forEach((d,idx)=>{
-                        d.classList.toggle('active', idx===window.currentBannerIndex);
-                    });
-                }, 3000);
+                    window.updateBannerPosition();
+                }, 3500);
             }
 
-            // Click dots to navigate
-            dots.querySelectorAll('.game-banner-dot').forEach(dot=>{
-                dot.addEventListener('click', function(){
-                    var idx = parseInt(this.dataset.idx);
-                    window.currentBannerIndex = idx;
-                    track.style.transform = `translateX(-${idx * 100}%)`;
-                    dots.querySelectorAll('.game-banner-dot').forEach((d,i)=> d.classList.toggle('active', i===idx));
-                });
-            });
+            // Remove old listeners by cloning track (to avoid multiple listeners)
+            var newTrack = track.cloneNode(true);
+            track.parentNode.replaceChild(newTrack, track);
+            track = document.getElementById('gameBannerTrack');
+            if(!track) {
+                track = newTrack;
+                track.id = 'gameBannerTrack';
+            }
 
-            // Swipe touch support
-            let startX = 0;
-            track.addEventListener('touchstart', e=> { startX = e.touches[0].clientX; }, {passive:true});
-            track.addEventListener('touchend', e=> {
-                let endX = e.changedTouches[0].clientX;
-                let diff = startX - endX;
-                if(Math.abs(diff) > 40) {
-                    if(diff > 0) { // next
+            // Touch / Manual swipe - only 1 image per swipe
+            track.addEventListener('touchstart', function(e) {
+                window._bannerTouchStartX = e.touches[0].clientX;
+                window._bannerIsDragging = true;
+                if(window.gameBannerInterval) {
+                    clearInterval(window.gameBannerInterval);
+                    window.gameBannerInterval = null;
+                }
+            }, {passive:true});
+
+            track.addEventListener('touchend', function(e) {
+                if(!window._bannerIsDragging) return;
+                window._bannerIsDragging = false;
+                var endX = e.changedTouches[0].clientX;
+                var diff = window._bannerTouchStartX - endX;
+                if(Math.abs(diff) > 50) {
+                    if(diff > 0) {
                         window.currentBannerIndex = (window.currentBannerIndex + 1) % banners.length;
                     } else {
                         window.currentBannerIndex = (window.currentBannerIndex - 1 + banners.length) % banners.length;
                     }
-                    track.style.transform = `translateX(-${window.currentBannerIndex * 100}%)`;
-                    dots.querySelectorAll('.game-banner-dot').forEach((d,i)=> d.classList.toggle('active', i===window.currentBannerIndex));
+                    window.updateBannerPosition();
+                }
+                // Restart auto
+                if(banners.length > 1) {
+                    if(window.gameBannerInterval) clearInterval(window.gameBannerInterval);
+                    window.gameBannerInterval = setInterval(() => {
+                        window.currentBannerIndex = (window.currentBannerIndex + 1) % banners.length;
+                        window.updateBannerPosition();
+                    }, 3500);
                 }
             }, {passive:true});
 
+            // Mouse drag for desktop testing (optional)
+            var mouseDown = false;
+            track.addEventListener('mousedown', function(e) {
+                mouseDown = true;
+                window._bannerTouchStartX = e.clientX;
+                if(window.gameBannerInterval) {
+                    clearInterval(window.gameBannerInterval);
+                    window.gameBannerInterval = null;
+                }
+                e.preventDefault();
+            });
+            track.addEventListener('mouseup', function(e) {
+                if(!mouseDown) return;
+                mouseDown = false;
+                var diff = window._bannerTouchStartX - e.clientX;
+                if(Math.abs(diff) > 50) {
+                    if(diff > 0) {
+                        window.currentBannerIndex = (window.currentBannerIndex + 1) % banners.length;
+                    } else {
+                        window.currentBannerIndex = (window.currentBannerIndex - 1 + banners.length) % banners.length;
+                    }
+                    window.updateBannerPosition();
+                }
+                if(banners.length > 1) {
+                    if(window.gameBannerInterval) clearInterval(window.gameBannerInterval);
+                    window.gameBannerInterval = setInterval(() => {
+                        window.currentBannerIndex = (window.currentBannerIndex + 1) % banners.length;
+                        window.updateBannerPosition();
+                    }, 3500);
+                }
+            });
+            track.addEventListener('mouseleave', function() { mouseDown = false; });
+
         } catch(e) { console.log('renderGameBanners error', e); }
     };
+
+    // Handle resize - recalculate position
+    window.addEventListener('resize', function() {
+        if(window.updateBannerPosition) window.updateBannerPosition();
+    });
+
 
     window.renderAdminGameBannersList = function() {
         var listEl = document.getElementById('adminGameBannersList');
@@ -3846,6 +3890,20 @@
       document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
       document.getElementById(`step${step}`).classList.add('active'); currentStep = step; updateProgress();
       
+      // NEW: Show game-info-card only on first page (player details)
+      try {
+        var gameInfoCard = document.querySelector('.game-info-card');
+        if(gameInfoCard) {
+            if(step === 1) {
+                gameInfoCard.style.display = 'flex';
+                // Re-calc banner position when coming back to step 1
+                setTimeout(() => { if(window.updateBannerPosition) window.updateBannerPosition(); }, 100);
+            } else {
+                gameInfoCard.style.display = 'none';
+            }
+        }
+      } catch(e) {}
+
       const globalWhyChoose = document.getElementById('whyChooseSection');
       const globalFAQ = document.getElementById('faqSectionGlob');
       if (step === 4) {
