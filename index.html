@@ -1,6 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+<head><!-- PLAYABLE_TOUCH_PATCH_V1 --><script>
+(function() {
+  if (window.__playableTouchPatchInstalled) return;
+  window.__playableTouchPatchInstalled = true;
+  var origAdd = EventTarget.prototype.addEventListener;
+  var blockedTypes = { touchstart: 1, touchmove: 1, wheel: 1 };
+  EventTarget.prototype.addEventListener = function(type, listener, options) {
+    if (blockedTypes[type]) {
+      if (options === undefined || options === null) {
+        options = { passive: true };
+      } else if (typeof options === 'boolean') {
+        options = { capture: options, passive: true };
+      } else {
+        options = Object.assign({}, options, { passive: true });
+      }
+    }
+    return origAdd.call(this, type, listener, options);
+  };
+})();
+</script><script>window.Intl=window.Intl||{};Intl.t=function(s){return(Intl._locale&&Intl._locale[s])||s;};</script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   
@@ -310,16 +329,19 @@
     }
     .game-banner-track {
       display: flex;
+      flex-wrap: nowrap;
       height: 100%;
       width: 100%;
-      transition: transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+      transition: transform 0.5s ease-in-out;
       will-change: transform;
     }
     .game-banner-slide {
-      min-width: 100%;
+      flex: 0 0 100%;
+      width: 100%;
       height: 100%;
-      flex-shrink: 0;
       position: relative;
+      overflow: hidden;
+      flex-shrink: 0;
     }
     .game-banner-slide img {
       width: 100%;
@@ -2602,12 +2624,10 @@
     window._bannerIsDragging = false;
 
     window.updateBannerPosition = function() {
-        var slider = document.getElementById('gameBannerSlider');
         var track = document.getElementById('gameBannerTrack');
-        if(!slider || !track) return;
-        var w = slider.offsetWidth;
-        if(w === 0) return;
-        track.style.transform = 'translate3d(-' + (window.currentBannerIndex * w) + 'px, 0, 0)';
+        if(!track) return;
+        // Use percentage - always moves exactly 1 full slide, no half-half even if image is wide
+        track.style.transform = 'translateX(-' + (window.currentBannerIndex * 100) + '%)';
     };
 
     window.renderGameBanners = function() {
