@@ -593,8 +593,6 @@
       background: linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(0,0,0,0.4) 100%);
       border: 1px solid var(--surface-border);
       border-radius: var(--radius-md);
-      padding: 15px;
-      text-align: center;
       cursor: pointer;
       position: relative;
       transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
@@ -603,8 +601,8 @@
       flex-direction: row;
       align-items: center;
       justify-content: space-between;
-      padding-left: 20px;
-      padding-right: 20px;
+      padding: 14px 16px;
+      gap: 12px;
       margin-top: 10px; 
     }
 
@@ -622,24 +620,88 @@
     
     .pack-card.purchased { display: none !important; }
 
-    .pack-uc {
+    /* NEW UC Tile Layout */
+    .pack-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .uc-logo-tile {
+      width: 48px;
+      height: 48px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+    }
+
+    .uc-icon { width: 28px; height: 28px; object-fit: contain; }
+
+    .pack-uc-details {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      text-align: left;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .pack-uc-main {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 600;
+      color: #fff;
+      line-height: 1.2;
+      white-space: normal;
+      word-break: break-word;
+    }
+
+    .pack-uc-total {
+      font-family: var(--font-body);
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-muted);
+      letter-spacing: 0.3px;
+      margin-top: 1px;
+    }
+
+    .pack-price-row {
       display: flex;
       align-items: center;
       gap: 8px;
-      font-family: var(--font-display);
-      font-size: 17px;
-      font-weight: 500;
-      color: #fff;
+      margin-top: 4px;
+      flex-wrap: wrap;
     }
-    
-    .uc-icon { width: 22px; height: 22px; }
 
-    .pack-price {
-      color: var(--text-muted);
-      font-size: 16px;
-      font-weight: 600;
+    .pack-price-current {
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+      font-family: var(--font-body);
     }
-    .pack-card.selected .pack-price { color: var(--primary); }
+
+    .pack-price-original {
+      font-size: 12px;
+      font-weight: 600;
+      color: #ff4757;
+      text-decoration: line-through;
+      text-decoration-color: #ff4757;
+      opacity: 0.95;
+      font-family: var(--font-body);
+    }
+
+    .pack-card.selected .pack-price-current { color: var(--primary); }
+
+    /* Legacy support */
+    .pack-uc { display: contents; }
+    .pack-price { display: contents; }
     
     .check-mark {
       position: absolute;
@@ -912,6 +974,8 @@
       backdrop-filter: blur(10px); border: 1px solid var(--surface-border); padding: 10px 15px;
       border-radius: 50px; display: none; align-items: center; gap: 10px; z-index: 99;
       box-shadow: 0 10px 20px rgba(0,0,0,0.5); animation: slideInLeft 0.5s ease;
+      transition: bottom 0.35s cubic-bezier(0.25,0.8,0.25,1);
+      will-change: bottom;
     }
     @keyframes slideInLeft { from { transform: translateX(-100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
     
@@ -2155,15 +2219,17 @@
           <div id="adminBulkPacksList"></div>
           
           <h4 class="admin-section-title">➕ Add New Pack</h4>
-          <div class="admin-input-group">
-             <select id="newPackType" class="form-input" style="padding: 10px; width: 30%;">
+          <div class="admin-input-group" style="flex-wrap: wrap;">
+             <select id="newPackType" class="form-input" style="padding: 10px; width: 22%;">
                 <option value="trial">Trial</option>
                 <option value="bulk">Regular</option>
              </select>
-             <input type="text" id="newPackUc" class="form-input" placeholder="UC e.g. 60+6" style="padding: 10px; width: 30%;">
-             <input type="number" id="newPackPrice" class="form-input" placeholder="₹" style="padding: 10px; width: 30%;">
+             <input type="text" id="newPackUc" class="form-input" placeholder="UC e.g. 60+6" style="padding: 10px; width: 24%;">
+             <input type="number" id="newPackPrice" class="form-input" placeholder="₹ Price" style="padding: 10px; width: 18%;">
+             <input type="number" id="newPackOriginalPrice" class="form-input" placeholder="Cut ₹ (e.g. 30)" style="padding: 10px; width: 18%;">
              <button class="btn btn-primary" onclick="addNewPack()" style="padding: 10px; width: auto;"><i class="fas fa-plus"></i></button>
           </div>
+          <p style="font-size:10px; color:#aaa; margin-top:4px; margin-left:2px;">Cut ₹ = red strikethrough wala original price (optional)</p>
           
           <hr style="border-color: #333; margin: 30px 0 20px;">
           <div style="display: flex; gap: 10px;">
@@ -3632,10 +3698,11 @@
         
         const renderList = (packs, type) => packs.map((p, index) => `
             <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.1); padding: 10px; margin-bottom: 10px; border-radius: 8px;">
-                <div style="display: flex; gap: 10px; margin-bottom: 8px; align-items: center;">
-                    <input type="text" class="form-input" value="${p.uc}" onchange="updatePack('${type}', ${index}, 'uc', this.value)" style="padding: 8px; font-size: 13px; width:40%;" placeholder="UC e.g. 60 or 60+6"> 
-                    <input type="number" class="form-input" value="${p.price}" onchange="updatePack('${type}', ${index}, 'price', this.value)" style="padding: 8px; font-size: 13px; width:40%;" placeholder="₹ (0 for FREE)">
-                    <button class="btn" style="background:var(--error); padding: 8px; width: 20%;" onclick="removePack('${type}', ${index})"><i class="fas fa-trash"></i></button>
+                <div style="display: flex; gap: 8px; margin-bottom: 8px; align-items: center; flex-wrap: wrap;">
+                    <input type="text" class="form-input" value="${p.uc}" onchange="updatePack('${type}', ${index}, 'uc', this.value)" style="padding: 8px; font-size: 13px; width:28%;" placeholder="UC e.g. 60 or 60+6"> 
+                    <input type="number" class="form-input" value="${p.price}" onchange="updatePack('${type}', ${index}, 'price', this.value)" style="padding: 8px; font-size: 13px; width:22%;" placeholder="₹ Price">
+                    <input type="number" class="form-input" value="${p.originalPrice || ''}" onchange="updatePack('${type}', ${index}, 'originalPrice', this.value)" style="padding: 8px; font-size: 13px; width:22%; border: 1px dashed #ff4757;" placeholder="Cut ₹">
+                    <button class="btn" style="background:var(--error); padding: 8px; width: 18%;" onclick="removePack('${type}', ${index})"><i class="fas fa-trash"></i></button>
                 </div>
                 
                 <div style="display: flex; gap: 10px; margin-bottom: 8px; align-items: center; flex-wrap: wrap;">
@@ -3689,7 +3756,16 @@
     window.removePackRzpLink = function(type, packIndex, linkIndex) { window.siteConfig[type][packIndex].rzpLinks.splice(linkIndex, 1); window.renderAdminPacksList(); };
 
     window.updatePack = function(type, index, field, value) {
-        if (field === 'price') { window.siteConfig[type][index][field] = parseInt(value) || 0;
+        if (field === 'price' || field === 'originalPrice') { 
+            const v = parseInt(value) || 0;
+            if(field === 'originalPrice' && v===0){
+                // allow empty -> remove field
+                if(value === '' || value === null) delete window.siteConfig[type][index][field];
+                else window.siteConfig[type][index][field] = 0;
+            } else {
+                window.siteConfig[type][index][field] = v;
+            }
+            if(field === 'originalPrice' && (!value || value=='')) delete window.siteConfig[type][index][field];
         } else if (field === 'uc') { window.siteConfig[type][index][field] = String(value).trim();
         } else if (field === 'isLimited' || field === 'secondWebhook') { window.siteConfig[type][index][field] = value === true;
         } else { window.siteConfig[type][index][field] = value; }
@@ -3699,10 +3775,17 @@
     
     window.addNewPack = function() {
         const type = document.getElementById('newPackType').value === 'trial' ? 'trialPacks' : 'bulkPacks';
-        const ucRaw = document.getElementById('newPackUc').value.trim(); const price = parseInt(document.getElementById('newPackPrice').value) || 0;
+        const ucRaw = document.getElementById('newPackUc').value.trim(); 
+        const price = parseInt(document.getElementById('newPackPrice').value) || 0;
+        const originalPriceInput = document.getElementById('newPackOriginalPrice');
+        const originalPrice = originalPriceInput ? (parseInt(originalPriceInput.value) || 0) : 0;
         if(ucRaw) { 
-            window.siteConfig[type].push({uc: ucRaw, price, rzpLinks: [], discountText: "", isLimited: false, secondWebhook: false}); 
-            document.getElementById('newPackUc').value = ''; document.getElementById('newPackPrice').value = ''; 
+            const newPackObj = {uc: ucRaw, price, rzpLinks: [], discountText: "", isLimited: false, secondWebhook: false};
+            if(originalPrice && originalPrice > price) newPackObj.originalPrice = originalPrice;
+            window.siteConfig[type].push(newPackObj); 
+            document.getElementById('newPackUc').value = ''; 
+            document.getElementById('newPackPrice').value = ''; 
+            if(originalPriceInput) originalPriceInput.value = '';
             window.renderAdminPacksList();
         } else { alert("Please enter valid UC"); }
     }
@@ -3933,16 +4016,32 @@
               </div>
             `;
             const isFree = pack.price === 0;
-            const priceHtml = isFree ? `<span class="free-price">FREE</span>` : `₹${pack.price}`;
             const packDataStr = encodeURIComponent(JSON.stringify(pack));
             const ucLogoSrc = window.siteConfig.images.ucLogo || 'uc-logo.webp';
             const displayUc = (typeof getPackDisplayText === 'function') ? getPackDisplayText(pack.uc) : (pack.uc + ' UC');
+            const totalUcVal = (typeof getPackTotalUc === 'function') ? getPackTotalUc(pack.uc) : '';
+            const sUc = String(pack.uc || '');
+            const hasBonus = sUc.includes('+');
+            const totalHtml = hasBonus && totalUcVal ? `<div class="pack-uc-total">Total ${totalUcVal} UC</div>` : '';
+            const hasOriginal = pack.originalPrice && parseInt(pack.originalPrice) > parseInt(pack.price);
+            let priceInner = '';
+            if(isFree){
+                priceInner = `<span class="free-price">FREE</span>`;
+            } else {
+                priceInner = `<span class="pack-price-current">₹${pack.price}</span>` + (hasOriginal ? `<span class="pack-price-original">₹${pack.originalPrice}</span>` : '');
+            }
             
             return `
               <div class="pack-card ${isFree ? 'free-pack' : ''}" data-pack='${packDataStr}'>
                 ${badgesHtml}
-                <div class="pack-uc"><img src="${ucLogoSrc}" class="uc-icon" draggable="false"> ${displayUc}</div>
-                <div class="pack-price">${priceHtml}</div>
+                <div class="pack-left">
+                  <div class="uc-logo-tile"><img src="${ucLogoSrc}" class="uc-icon" draggable="false"></div>
+                  <div class="pack-uc-details">
+                    <div class="pack-uc-main">${displayUc}</div>
+                    ${totalHtml}
+                    <div class="pack-price-row">${priceInner}</div>
+                  </div>
+                </div>
               </div>`;
         };
 
@@ -4035,9 +4134,54 @@
       const randomName = gamingNames[Math.floor(Math.random() * gamingNames.length)]; const randomUC = ucPacksList[Math.floor(Math.random() * ucPacksList.length)];
       const el = document.getElementById('socialProof'); // Avatar now uses profile-pic.webp instead of initial
       document.getElementById('socialName').textContent = randomName; document.getElementById('socialUC').textContent = randomUC;
-      el.style.display = 'flex'; setTimeout(() => { el.style.display = 'none'; }, 5000);
+      el.style.display = 'flex'; 
+      if(typeof updateSocialProofPosition === 'function') updateSocialProofPosition();
+      setTimeout(() => { el.style.display = 'none'; }, 5000);
     }
     setInterval(() => { if(Math.random() > 0.5) showSocialProof(); }, 10000);
+
+    // --- NEW: Fix social proof overlapping footer (Terms) when scrolled to bottom ---
+    function updateSocialProofPosition(){
+      const proof = document.getElementById('socialProof');
+      const footer = document.querySelector('.site-footer');
+      if(!proof || !footer) return;
+      if(proof.style.display === 'none' || proof.style.display === '') {
+        // keep default bottom for next show, but still calculate if needed
+      }
+      const footerRect = footer.getBoundingClientRect();
+      const viewportH = window.innerHeight;
+      if(footerRect.top < viewportH){
+        // Footer is visible - push popup above the 2026 FlashTOP line (top of footer)
+        const overlap = viewportH - footerRect.top;
+        const extraGap = 12;
+        proof.style.bottom = (overlap + extraGap) + 'px';
+      } else {
+        proof.style.bottom = '20px';
+      }
+    }
+
+    let socialProofScrollTicking = false;
+    window.addEventListener('scroll', function(){
+      if(!socialProofScrollTicking){
+        requestAnimationFrame(function(){
+          updateSocialProofPosition();
+          socialProofScrollTicking = false;
+        });
+        socialProofScrollTicking = true;
+      }
+    }, {passive: true});
+    window.addEventListener('resize', updateSocialProofPosition, {passive: true});
+    // Also observe footer size changes
+    if('ResizeObserver' in window){
+      try{
+        const footerEl = document.querySelector('.site-footer');
+        if(footerEl){
+          const ro = new ResizeObserver(updateSocialProofPosition);
+          ro.observe(footerEl);
+        }
+      }catch(e){}
+    }
+    
 
     function getIndiaHour(){ const date = new Date(); const hourStr = date.toLocaleString("en-US", {timeZone: "Asia/Kolkata", hour: "numeric", hour12: false}); return parseInt(hourStr); }
     function animateLiveOrders(){
