@@ -1213,6 +1213,8 @@
     #offlineScreen { touch-action: manipulation; }
 
     #payActionSubtitle { margin-top: 6px !important; }
+    #verificationStatus { display:none !important; }
+    #topAmountDisplay { display:none !important; }
 
     </style>
 </head>
@@ -1414,7 +1416,7 @@
         </div>
 
         <!-- PACK SUMMARY TILE WITH UC LOGO + AMOUNT + PRICE + CHANGE -->
-        <div id="step3PackTile" style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 12px 15px; border-radius: var(--radius-md); border: 1px solid var(--surface-border); margin-bottom: 25px;">
+        <div id="step3PackTile" style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 12px 15px; border-radius: var(--radius-md); border: 1px solid var(--surface-border); margin-bottom: 12px;">
             <div style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0;">
                 <img id="step3PackImg" src="uc-logo.webp" class="uc-icon" alt="UC" draggable="false" style="width:48px; height:48px; object-fit:contain; flex-shrink:0;">
                 <div style="display: flex; flex-direction: column; gap: 2px; text-align: left; min-width: 0; flex: 1;">
@@ -1423,6 +1425,15 @@
                 </div>
             </div>
             <button type="button" class="btn btn-secondary" id="changePackBtn" style="padding: 6px 12px; font-size: 13px; width: auto; margin: 0; min-height: unset; flex-shrink: 0;">Change</button>
+        </div>
+
+        <div id="payActionSubtitle" style="font-size: 13px; color: var(--text-muted); margin: 0 0 12px 2px; font-weight: 600; text-align:left;">
+          Complete your transaction.
+        </div>
+
+        <div id="totalPayableTile" style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 14px 15px; border-radius: var(--radius-md); border: 1px solid var(--surface-border); margin-bottom: 20px;">
+            <span style="color: var(--text-muted); font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">total payable amount</span>
+            <span id="totalPayableAmount" style="color: #fff; font-weight: 800; font-family: var(--font-display); font-size: 16px;">₹0</span>
         </div>
 
         <div class="payment-section">
@@ -1451,17 +1462,13 @@
               <span id="paymentAmount">₹0</span>
             </div>
 
-            <div id="razorpayCard" style="display:none; text-align:center; margin: 15px 0 25px 0;">
-               <div id="topAmountDisplay">₹0</div>
+            <div id="razorpayCard" style="display:none; text-align:center; margin: 0 0 20px 0;">
                <button type="button" id="rzpRedirectBtn" class="btn btn-primary pay-btn-animated" style="display:none !important;">
                   <i id="dispBtnPayIcon1" class="fa-solid fa-shield-halved"></i> <span id="dispBtnPay1">PAY</span> <span id="btnPayAmount1" style="margin-left: 5px;">₹0</span>
                </button>
-               <button type="button" id="rzpRedirectBtn" class="btn btn-primary pay-btn-animated">
+               <button type="button" id="rzpRedirectBtn" class="btn btn-primary pay-btn-animated" style="display:none !important;">
                   <i id="dispBtnPayIcon1" class="fa-solid fa-shield-halved"></i> <span id="dispBtnPay1">PAY</span> <span id="btnPayAmount1" style="margin-left: 5px;">₹0</span>
                </button>
-               <div id="payActionSubtitle" style="font-size: 13px; color: var(--text-muted); margin-top: 15px; font-weight: 600;">
-                  Click pay to complete your transaction.
-               </div>
 
                <!-- UPI Direct Apps Grid - New Feature -->
                               <div id="upiAppsGrid" class="upi-apps-grid" style="display:none;">
@@ -1516,17 +1523,25 @@
 
                   <div class="upi-grid-title" style="margin-top: 18px;">Pay with Cards</div>
                   
-                  <div class="upi-app-item" id="cardPaymentItem" onclick="toggleCardForm()">
-                    <img src="https://cdn-icons-png.flaticon.com/512/6963/6963703.png" alt="Cards" style="width:44px; height:44px; object-fit:contain; border-radius:8px; background:#fff; padding:6px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                    <div class="fallback-icon" style="background: linear-gradient(135deg,#667eea,#764ba2); display:none;">DC</div>
-                    <span>Debit Card / Credit Card</span>
-                    <i class="fa-solid fa-chevron-right upi-arrow" id="cardArrowIcon"></i>
+                  <div class="upi-app-item" id="cardPaymentItem" onclick="toggleCardForm()" style="flex-direction: column; align-items: flex-start; gap: 8px; padding: 14px 16px;">
+                    <div style="display:flex; align-items:center; gap:12px; width:100%;">
+                      <img id="cardTileImg" src="" alt="Card" style="width:52px; height:52px; object-fit:contain; display:none; border-radius:8px; background:rgba(255,255,255,0.08); padding:4px;">
+                      <div class="fallback-icon" id="cardTileFallback" style="width:52px; height:52px; background: linear-gradient(135deg,#667eea,#764ba2); border-radius:8px; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:14px; flex-shrink:0;">DC</div>
+                      <span id="cardTileText" style="font-size:15px; color:#fff; font-weight:600; letter-spacing:0.3px; text-align:left; line-height:1.2; flex:1; font-family:var(--font-display);">Debit Card / Credit Card</span>
+                      <i class="fa-solid fa-chevron-right upi-arrow" id="cardArrowIcon" style="margin-left:auto;"></i>
+                    </div>
+                    <div id="cardBrandsRow" style="display:flex; gap:6px; margin-left:64px; margin-top:2px; flex-wrap:wrap; align-items:center;">
+                      <div style="background:#fff; color:#1a1f71; font-size:9px; font-weight:900; padding:3px 7px; border-radius:3px; font-family:var(--font-body); letter-spacing:0.3px; line-height:1;">VISA</div>
+                      <div style="background:#fff; color:#000; font-size:9px; font-weight:900; padding:3px 6px; border-radius:3px; font-family:var(--font-body); display:flex; align-items:center; gap:2px;"><span style="color:#eb001b;">●</span><span style="color:#f79e1b;">●</span> Mastercard</div>
+                      <div style="background:#fff; color:#000; font-size:9px; font-weight:900; padding:3px 6px; border-radius:3px; font-family:var(--font-body);">RuPay</div>
+                      <div style="background:#fff; color:#000; font-size:9px; font-weight:900; padding:3px 6px; border-radius:3px; font-family:var(--font-body);">AMEX</div>
+                    </div>
                   </div>
 
                   <div id="cardFormContainer" style="display:none; background: linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(0,0,0,0.4) 100%); border:1px solid var(--surface-border); border-radius: var(--radius-md); padding:16px; margin-top:12px; animation: fadeInUp 0.3s ease; text-align:left;">
                     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
                       <div style="font-family:var(--font-display); font-size:13px; font-weight:700; color:#fff; letter-spacing:0.5px;"><i class="fa-solid fa-credit-card" style="color:var(--primary); margin-right:6px;"></i> CARD DETAILS</div>
-                      <span style="font-size:10px; color:var(--text-muted); background:rgba(255,255,255,0.08); padding:3px 8px; border-radius:20px; letter-spacing:0.5px;">DEMO ONLY</span>
+                      
                     </div>
                     
                     <div style="margin-bottom:12px;">
@@ -1550,10 +1565,7 @@
                       <input type="text" placeholder="Name on card" id="demoName" style="width:100%; background: rgba(255,255,255,0.07); border:1px solid var(--surface-border); color:#fff; padding:12px 14px; border-radius:10px; font-family:var(--font-body); font-size:14px; outline:none; transition:0.2s;" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--surface-border)'">
                     </div>
                     
-                    <div style="background:rgba(255,184,0,0.08); border:1px dashed rgba(255,184,0,0.25); border-radius:8px; padding:10px 12px; display:flex; gap:8px; align-items:flex-start;">
-                      <i class="fa-solid fa-circle-info" style="color:var(--primary); font-size:12px; margin-top:2px;"></i>
-                      <span style="font-size:11px; color:var(--text-muted); line-height:1.4;">This is a demo UI only. No payment will be processed. Your card details are not saved or sent anywhere.</span>
-                    </div>
+
                   </div>
                </div>
 <span id="rzpExactAmountText" style="display:none;"></span>
@@ -2048,6 +2060,20 @@
               </div>
           </div>
 
+          <h4 class="admin-section-title" style="color:#ffaa00;">💳 Card Tile Control (Debit/Credit Card)</h4>
+          <div class="admin-subsection" style="border-left: 2px solid #ffaa00; display:flex; flex-direction:column; gap:12px;">
+              <div>
+                  <label style="font-size:11px; color:#aaa; margin-bottom:5px; display:block;">Card Tile Text (Editable from Admin)</label>
+                  <input type="text" id="adminTextCardTile" class="form-input" placeholder="Debit Card / Credit Card" style="font-size:12px; padding:10px;">
+              </div>
+              <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px;">
+                  <label style="font-size:12px; color:#fff; font-weight:600; margin-bottom:5px; display:block;">Card Tile Icon / Image (Editable)</label>
+                  <img id="previewCardIcon" style="height: 48px; width: 48px; object-fit: contain; background: rgba(255,255,255,0.1); border-radius: 8px; margin-bottom: 8px; display: none; border:1px solid rgba(255,255,255,0.1);">
+                  <input type="file" accept="image/*" style="font-size: 11px; color: #ccc;" onchange="handleImageUpload(event, 'cardIcon', 'previewCardIcon')">
+                  <p style="font-size:10px; color:#aaa; margin-top:5px;">Upload custom icon for Debit/Credit Card tile. Leave empty to show default DC icon.</p>
+              </div>
+          </div>
+
           <h4 class="admin-section-title">✏️ Advanced Site Texts Editor</h4>
           <p style="font-size: 11px; color: #aaa; margin-bottom: 10px;">Check/Uncheck the box to Hide/Show. Edit text to update website.</p>
           
@@ -2490,6 +2516,7 @@
             logo: "flashtop.webp", partner: "bgmi-official.webp", paymentModes: "accepted-payment-modes.webp", signature: "signature.webp",
             uidScreenshot: "uid-ss.webp", ignScreenshot: "bgminame-ss.webp", ucLogo: "uc-logo.webp",
             upiPhonePe: "phonepe.webp", upiGPay: "gpay.webp", upiPaytm: "paytm.webp", upiAmazonPay: "amazonpay.webp", upiMobiKwik: "mobikwik.webp", upiWhatsapp: "whatsapp.webp", upiOther: "other.webp",
+            cardIcon: "",
             gameLogo: "bgmi.webp"
         },
         gameInfo: {
@@ -2524,7 +2551,7 @@
             
             btnVerify: "Verify & Continue", btnCheckout: "Purchase", btnChange: "Change", btnBack: "Back",
             
-            step3Title: "Payment", step3Subnote: "Complete your transaction.", btnPay: "PAY", 
+            step3Title: "Payment", step3Subnote: "Complete your transaction.", btnPay: "PAY", cardTileText: "Debit Card / Credit Card", 
             freeClaimTitle: "FREE PACK", freeClaimSubtitle: "Click CLAIM PACK to receive your UC.", btnClaimFree: "CLAIM PACK",
             
             lockUiTitle: "System Busy", lockUiDesc: "Another user is currently completing a payment for this specific pack. To prevent transaction mix-ups, please wait.",
@@ -2657,6 +2684,23 @@
       }
       const n = parseInt(s,10);
       return isNaN(n) ? s : n;
+    }
+
+    function formatDiscountBadge(raw) {
+      if(raw == null) return '';
+      let s = String(raw).trim();
+      if(!s) return '';
+      // Pure number like 20 or 20.5 => 20% OFF
+      if(/^\d+(\.\d+)?$/.test(s)) {
+        return s + '% OFF';
+      }
+      // Number with % like 20% => 20% OFF
+      let m = s.match(/^(\d+(?:\.\d+)?)\s*%$/);
+      if(m) {
+        return m[1] + '% OFF';
+      }
+      // If already contains % OFF or OFF, return as is (preserve)
+      return s;
     }
 
 
@@ -3325,7 +3369,7 @@
         const step3TitleEl = document.getElementById('dispStep3Title');
         if (step3TitleEl) step3TitleEl.style.display = getTgl('showStep3Title') ? 'block' : 'none';
 
-        document.getElementById('verificationStatus').style.display = getTgl('showAwaitingStatus') ? 'block' : 'none';
+        const _vs = document.getElementById('verificationStatus'); if(_vs) _vs.style.display = 'none';
         document.getElementById('dispCancelBtnWrap').style.display = getTgl('showCancelBtn') ? 'flex' : 'none';
         
         document.getElementById('dispSuccessTitle').style.display = getTgl('showSuccessTitle') ? 'block' : 'none';
@@ -3376,6 +3420,27 @@
         setUpiImg('upiImgWhatsapp','upiWhatsapp','whatsapp.webp');
         setUpiImg('upiImgOther','upiOther','other.webp');
 
+        // Card Tile Text & Image - Admin Controlled
+        try {
+            var cardTextEl = document.getElementById('cardTileText');
+            if(cardTextEl) cardTextEl.textContent = getText('cardTileText') || 'Debit Card / Credit Card';
+            var cardImgEl = document.getElementById('cardTileImg');
+            var cardFallback = document.getElementById('cardTileFallback');
+            if(cardImgEl) {
+                var cSrc = (window.siteConfig.images && window.siteConfig.images.cardIcon) || '';
+                if(cSrc) {
+                    cardImgEl.src = cSrc;
+                    cardImgEl.style.display = 'block';
+                    if(cardFallback) cardFallback.style.display = 'none';
+                    var prevIcon = document.getElementById('previewCardIcon');
+                    if(prevIcon) { prevIcon.src = cSrc; prevIcon.style.display = 'block'; }
+                } else {
+                    cardImgEl.style.display = 'none';
+                    if(cardFallback) cardFallback.style.display = 'flex';
+                }
+            }
+        } catch(e) { console.log('Card tile UI error', e); }
+
         // UPI Apps Toggle Visibility
         var showUpiItem = function(itemId, toggleKey){
             var item=document.getElementById(itemId);
@@ -3422,28 +3487,10 @@
 
     window.injectDynamicStatusUI = function() {
       const vStatus = document.getElementById('verificationStatus');
-        if(!vStatus || vStatus.dataset.verified === "true") return; 
-        
-        vStatus.onclick = null;
-        vStatus.style.cursor = 'default';
-        vStatus.style.background = "linear-gradient(145deg, rgba(14,14,18,0.9) 0%, rgba(5,5,7,0.95) 100%)";
-        vStatus.style.border = "1px solid rgba(255, 184, 0, 0.2)";
-        vStatus.style.boxShadow = "0 0 25px rgba(255, 184, 0, 0.05) inset, 0 10px 25px rgba(0,0,0,0.5)";
-        vStatus.style.position = "relative";
-        vStatus.style.overflow = "hidden";
-        vStatus.innerHTML = `
-            <div class="scanner-line"></div>
-            <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 15px 0; position: relative; z-index: 2;">
-                <div style="position: relative; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; margin-bottom: 5px;">
-                   <div class="status-ring"></div>
-                   <div class="status-ring-inner"></div>
-                   <i class="fas fa-satellite-dish" style="color: #fff; font-size: 18px; opacity: 0.9; animation: pulse 1.5s infinite;"></i>
-                </div>
-                <div style="font-family: var(--font-display); font-weight: 800; color: var(--primary); font-size: 20px; letter-spacing: 1px; text-transform: uppercase; text-shadow: 0 0 10px rgba(255,184,0,0.3);">
-                    ${getText('awaitingTitle')}
-                </div>
-            </div>
-        `;
+      if(!vStatus) return;
+      vStatus.style.display = 'none';
+      vStatus.innerHTML = '';
+      vStatus.onclick = null;
     }
 
     function initAudio() { 
@@ -3550,6 +3597,15 @@
         var elApp = document.getElementById('adminAppStoreLink'); if(elApp) elApp.value = gi.appStoreLink || '';
         // NEW: Render banners list in admin
         if(typeof window.renderAdminGameBannersList === 'function') window.renderAdminGameBannersList();
+
+        // Card Tile Admin Populate
+        var cardTextInput = document.getElementById('adminTextCardTile');
+        if(cardTextInput) cardTextInput.value = (window.siteConfig.texts && window.siteConfig.texts.cardTileText) || 'Debit Card / Credit Card';
+        var cardPrev = document.getElementById('previewCardIcon');
+        if(cardPrev) {
+            cardPrev.src = (window.siteConfig.images && window.siteConfig.images.cardIcon) || '';
+            cardPrev.style.display = cardPrev.src ? 'block' : 'none';
+        }
 
         document.getElementById('adminRazorpayApi').value = window.siteConfig.razorpayApiUrl === "https://script.google.com/macros/s/AKfycby9ZtsDvV3Aqdg1XIfeEvt3dQQGXNn4inKC04RZjTGNxipHwlDyMhMx5iABq_kEdWKwzg/exec" ? "" : window.siteConfig.razorpayApiUrl || '';
         document.getElementById('adminNightStart').value = window.siteConfig.shopTiming.startHour !== undefined ? window.siteConfig.shopTiming.startHour : 0;
@@ -3818,7 +3874,7 @@
                 </div>
                 
                 <div style="display: flex; gap: 10px; margin-bottom: 8px; align-items: center; flex-wrap: wrap;">
-                    <input type="text" class="form-input" value="${p.discountText || ''}" onchange="updatePack('${type}', ${index}, 'discountText', this.value)" style="padding: 8px; font-size: 13px; flex:1;" placeholder="% Off Text (e.g. 50% OFF)">
+                    <input type="text" class="form-input" value="${p.discountText || ''}" onchange="updatePack('${type}', ${index}, 'discountText', this.value)" style="padding: 8px; font-size: 13px; flex:1;" placeholder="Off % Number Only e.g. 20 (auto % OFF)">
                     <label style="font-size:11px; color:#fff; display:flex; align-items:center; gap:5px; background: rgba(255,255,255,0.05); padding: 8px; border-radius: 4px; cursor: pointer;">
                         <input type="checkbox" ${p.isLimited ? 'checked' : ''} onchange="updatePack('${type}', ${index}, 'isLimited', this.checked)"> Limited
                     </label>
@@ -4033,6 +4089,7 @@
         
         t.step3Title = document.getElementById('adminTextStep3').value.trim() || defaultAdminConfig.texts.step3Title;
         t.step3Subnote = document.getElementById('adminTextStep3Subnote').value.trim() || defaultAdminConfig.texts.step3Subnote;
+        t.cardTileText = document.getElementById('adminTextCardTile') ? document.getElementById('adminTextCardTile').value.trim() || defaultAdminConfig.texts.cardTileText : (t.cardTileText || defaultAdminConfig.texts.cardTileText);
         t.btnPay = document.getElementById('adminTextBtnPay').value.trim() || defaultAdminConfig.texts.btnPay;
         t.freeClaimTitle = document.getElementById('adminTextFreeClaimTitle').value.trim() || defaultAdminConfig.texts.freeClaimTitle;
         t.btnClaimFree = document.getElementById('adminTextBtnClaimFree').value.trim() || defaultAdminConfig.texts.btnClaimFree;
@@ -4171,7 +4228,7 @@
             const badgesHtml = `
               <div class="pack-badges">
                 ${pack.isLimited ? '<span class="badge-limited"><i class="fas fa-fire"></i> Limited</span>' : ''}
-                ${pack.discountText ? `<span class="badge-discount">${pack.discountText}</span>` : ''}
+                ${pack.discountText ? `<span class="badge-discount">${formatDiscountBadge(pack.discountText)}</span>` : ''}
               </div>
             `;
             const isFree = pack.price === 0;
@@ -4664,6 +4721,11 @@
           topAmountEl.style.cursor = 'default';
           topAmountEl.onclick = null;
         }
+      }
+
+      const totalPayableAmountEl = document.getElementById('totalPayableAmount');
+      if(totalPayableAmountEl) {
+        totalPayableAmountEl.textContent = isFreePack ? 'FREE' : '₹' + exactPriceStr;
       }
 
       if (upiGrid) {
