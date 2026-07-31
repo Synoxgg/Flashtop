@@ -630,11 +630,11 @@
     }
 
     .uc-logo-tile {
-      width: 48px;
-      height: 48px;
+      width: 60px;
+      height: 60px;
       background: rgba(255,255,255,0.06);
       border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 12px;
+      border-radius: 14px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -642,7 +642,7 @@
       box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
     }
 
-    .uc-icon { width: 28px; height: 28px; object-fit: contain; }
+    .uc-icon { width: 38px; height: 38px; object-fit: contain; }
 
     .pack-uc-details {
       display: flex;
@@ -1087,10 +1087,10 @@
       text-shadow: 0 0 10px rgba(0, 255, 157, 0.4);
     }
   
-    /* === UPI Direct Apps Grid - Added for direct UPI app open === */
+    /* === UPI Direct Apps Grid - Vertical like UC packs === */
     .upi-apps-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      display: flex;
+      flex-direction: column;
       gap: 12px;
       margin: 18px 0 20px 0;
       animation: fadeInUp 0.4s ease;
@@ -1101,63 +1101,73 @@
     }
     .upi-app-item {
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
       align-items: center;
-      gap: 7px;
+      gap: 12px;
       cursor: pointer;
-      background: rgba(255,255,255,0.06);
+      background: linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(0,0,0,0.4) 100%);
       border: 1px solid var(--surface-border);
-      border-radius: 14px;
-      padding: 12px 6px 10px 6px;
-      transition: all 0.2s ease;
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
       position: relative;
       user-select: none;
       -webkit-tap-highlight-color: transparent;
+      overflow: visible;
+      margin-top: 10px;
     }
     .upi-app-item:hover {
-      transform: translateY(-2px);
-      border-color: rgba(255,184,0,0.5);
-      background: rgba(255,255,255,0.09);
-      box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+      transform: translateY(-3px);
+      border-color: rgba(255,184,0,0.4);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.3);
     }
     .upi-app-item:active {
-      transform: scale(0.97);
+      transform: scale(0.98);
     }
     .upi-app-item img {
-      width: 44px;
-      height: 44px;
+      width: 60px;
+      height: 60px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 14px;
+      padding: 8px;
       object-fit: contain;
-      border-radius: 10px;
+      flex-shrink: 0;
       pointer-events: auto !important;
       -webkit-user-drag: auto;
       user-drag: auto;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
     }
     .upi-app-item .fallback-icon {
-      width: 44px;
-      height: 44px;
-      border-radius: 10px;
+      width: 60px;
+      height: 60px;
+      border-radius: 14px;
       display: none;
       align-items: center;
       justify-content: center;
       color: #fff;
       font-weight: 800;
-      font-size: 16px;
+      font-size: 18px;
       pointer-events: auto;
       font-family: var(--font-display);
+      flex-shrink: 0;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
     }
     .upi-app-item span {
-      font-size: 11px;
-      color: #d1d5db;
+      font-size: 15px;
+      color: #fff;
       font-weight: 600;
-      letter-spacing: 0.2px;
-      text-align: center;
-      line-height: 1.1;
+      letter-spacing: 0.3px;
+      text-align: left;
+      line-height: 1.2;
+      flex: 1;
+      font-family: var(--font-display);
     }
     .upi-grid-title {
-      grid-column: 1 / -1;
-      font-family: var(--font-display);
-      font-size: 13px;
-      font-weight: 700;
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-weight: 600;
       letter-spacing: 1px;
       color: var(--text-muted);
       text-transform: uppercase;
@@ -1166,8 +1176,8 @@
       opacity: 0.9;
     }
     @media (max-width: 360px) {
-      .upi-apps-grid { grid-template-columns: repeat(4, 1fr); gap: 10px; }
-      .upi-app-item img, .upi-app-item .fallback-icon { width: 40px; height: 40px; }
+      .upi-app-item { padding: 12px 14px; }
+      .upi-app-item img, .upi-app-item .fallback-icon { width: 52px; height: 52px; }
     }
 
     
@@ -1382,20 +1392,26 @@
         <h2 class="step-title" id="dispStep3Title" style="margin-bottom: 20px;">Payment</h2>
         <p class="subnote" id="dispStep3Subnote" style="display: none !important; margin: 0;"></p>
 
-        <!-- NEW UC BLOCK -->
-        <div style="display: flex; flex-direction: column; align-items: center; margin-bottom: 15px;">
-           <img src="uc-logo.webp" class="uc-logo-img" alt="UC" style="width: 80px; height: 80px; object-fit: contain; margin-bottom: 10px; filter: drop-shadow(0 0 15px rgba(255,184,0,0.4));">
-           <div id="step3UcAmount" style="font-family: var(--font-display); font-size: 28px; font-weight: 800; color: #fff; letter-spacing: 1px;">-- UC</div>
-        </div>
-
-        <!-- NEW USER DETAILS TILE -->
-        <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 12px 15px; border-radius: var(--radius-md); border: 1px solid var(--surface-border); margin-bottom: 25px;">
+        <!-- USER DETAILS TILE -->
+        <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 12px 15px; border-radius: var(--radius-md); border: 1px solid var(--surface-border); margin-bottom: 12px;">
             <div style="display: flex; align-items: center; gap: 6px; font-family: var(--font-display); overflow: hidden; white-space: nowrap; flex: 1; margin-right: 10px;">
                 <span id="displayUidStep3" style="color:var(--primary); font-weight: 700; font-size: 15px; text-overflow: ellipsis; overflow: hidden; flex-shrink: 0;">--</span>
                 <span style="color: var(--text-muted); font-size: 14px; flex-shrink: 0;">•</span>
                 <span id="displayIgnStep3" style="color:#fff; font-weight: 600; font-size: 14px; text-overflow: ellipsis; overflow: hidden;">--</span>
             </div>
             <button type="button" class="btn btn-secondary" id="backToDetailsStep3" style="padding: 6px 12px; font-size: 13px; width: auto; margin: 0; min-height: unset; flex-shrink: 0;"><span id="dispBtnChange2">Change</span></button>
+        </div>
+
+        <!-- PACK SUMMARY TILE WITH UC LOGO + AMOUNT + PRICE + CHANGE -->
+        <div id="step3PackTile" style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 12px 15px; border-radius: var(--radius-md); border: 1px solid var(--surface-border); margin-bottom: 25px;">
+            <div style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0;">
+                <div class="uc-logo-tile"><img id="step3PackImg" src="uc-logo.webp" class="uc-icon" alt="UC" draggable="false"></div>
+                <div style="display: flex; flex-direction: column; gap: 2px; text-align: left; min-width: 0; flex: 1;">
+                    <div id="step3PackUc" style="font-family: var(--font-display); font-size: 15px; font-weight: 600; color: #fff; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">-- UC</div>
+                    <div id="step3PackPrice" style="font-family: var(--font-body); font-size: 14px; font-weight: 700; color: var(--primary);">₹0</div>
+                </div>
+            </div>
+            <button type="button" class="btn btn-secondary" id="changePackBtn" style="padding: 6px 12px; font-size: 13px; width: auto; margin: 0; min-height: unset; flex-shrink: 0;">Change</button>
         </div>
 
         <div class="payment-section">
@@ -3309,7 +3325,7 @@
     };
 
     window.injectDynamicStatusUI = function() {
-        const vStatus = document.getElementById('verificationStatus');
+      const vStatus = document.getElementById('verificationStatus');
         if(!vStatus || vStatus.dataset.verified === "true") return; 
         
         vStatus.onclick = null;
@@ -3714,6 +3730,15 @@
                         <input type="checkbox" ${p.secondWebhook ? 'checked' : ''} onchange="updatePack('${type}', ${index}, 'secondWebhook', this.checked)"> Discord V2
                     </label>
                 </div>
+
+                <div style="background: rgba(255,184,0,0.06); border: 1px solid rgba(255,184,0,0.15); padding: 8px; border-radius: 6px; margin-top: 10px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <img src="${p.packImage || window.siteConfig.images.ucLogo || 'uc-logo.webp'}" style="width:40px; height:40px; object-fit:contain; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); padding:4px;">
+                    <div style="flex:1; min-width:120px;">
+                        <label style="font-size:11px; color:#FFB800; font-weight:600; margin-bottom:4px; display:block;">Pack UC Image (Separate)</label>
+                        <input type="file" accept="image/*" style="font-size:11px; color:#ccc; width:100%;" onchange="handlePackImageUpload(event, '${type}', ${index})">
+                    </div>
+                    ${p.packImage ? `<button class="btn" style="background:rgba(255,71,87,0.15); border:1px solid rgba(255,71,87,0.3); color:#ff4757; padding:6px 10px; font-size:11px; border-radius:6px;" onclick="removePackImage('${type}', ${index})"><i class="fas fa-times"></i> Remove</button>` : ''}
+                </div>
                 
                 <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); padding: 8px; border-radius: 6px; margin-top: 10px;">
                     <label style="font-size: 11px; color: #aaa; margin-bottom: 5px; display:block;">Specific Razorpay Links (Load Balanced)</label>
@@ -3754,6 +3779,44 @@
     };
 
     window.removePackRzpLink = function(type, packIndex, linkIndex) { window.siteConfig[type][packIndex].rzpLinks.splice(linkIndex, 1); window.renderAdminPacksList(); };
+
+    window.handlePackImageUpload = function(event, type, packIndex) {
+        const file = event.target.files[0];
+        if(!file) return;
+        if(!file.type.startsWith('image/')) { alert('Please select an image file'); return; }
+        if(file.size > 800 * 1024) { alert('Image too large, please use under 800KB'); return; }
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                let width = img.width; let height = img.height;
+                const maxSize = 300;
+                if(width > maxSize || height > maxSize) {
+                    if(width > height) { height *= maxSize / width; width = maxSize; }
+                    else { width *= maxSize / height; height = maxSize; }
+                }
+                canvas.width = width; canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                const base64 = canvas.toDataURL('image/webp', 0.85);
+                if(!window.siteConfig[type][packIndex]) return;
+                window.siteConfig[type][packIndex].packImage = base64;
+                window.renderAdminPacksList();
+                window.renderSitePacks();
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    };
+
+    window.removePackImage = function(type, packIndex) {
+        if(window.siteConfig[type][packIndex]) {
+            delete window.siteConfig[type][packIndex].packImage;
+            window.renderAdminPacksList();
+            window.renderSitePacks();
+        }
+    };
 
     window.updatePack = function(type, index, field, value) {
         if (field === 'price' || field === 'originalPrice') { 
@@ -4017,7 +4080,7 @@
             `;
             const isFree = pack.price === 0;
             const packDataStr = encodeURIComponent(JSON.stringify(pack));
-            const ucLogoSrc = window.siteConfig.images.ucLogo || 'uc-logo.webp';
+            const ucLogoSrc = pack.packImage || window.siteConfig.images.ucLogo || 'uc-logo.webp';
             const displayUc = (typeof getPackDisplayText === 'function') ? getPackDisplayText(pack.uc) : (pack.uc + ' UC');
             const totalUcVal = (typeof getPackTotalUc === 'function') ? getPackTotalUc(pack.uc) : '';
             const sUc = String(pack.uc || '');
@@ -4466,7 +4529,21 @@
           const _rzpImg2 = document.getElementById('rzpModesImg'); if(_rzpImg2) _rzpImg2.style.display = 'block';
       }
       
-      document.getElementById('step3UcAmount').textContent = (typeof getPackDisplayText === 'function') ? getPackDisplayText(selectedPack.uc) : (selectedPack.uc + " UC");
+      // NEW: Populate pack summary tile with pack-specific image, UC amount and price
+      (function(){
+        var packUcEl = document.getElementById('step3PackUc');
+        var packPriceEl = document.getElementById('step3PackPrice');
+        var packImgEl = document.getElementById('step3PackImg');
+        if(packUcEl) packUcEl.textContent = (typeof getPackDisplayText === 'function') ? getPackDisplayText(selectedPack.uc) : (selectedPack.uc + " UC");
+        if(packPriceEl) packPriceEl.textContent = isFreePack ? 'FREE' : ('₹' + exactPriceStr);
+        if(packImgEl) {
+          var imgSrc = selectedPack.packImage || (window.siteConfig.images && window.siteConfig.images.ucLogo) || 'uc-logo.webp';
+          packImgEl.src = imgSrc;
+        }
+      })();
+      // Keep backward compat if old element still exists (hidden)
+      var oldUcAmt = document.getElementById('step3UcAmount');
+      if(oldUcAmt) oldUcAmt.textContent = (typeof getPackDisplayText === 'function') ? getPackDisplayText(selectedPack.uc) : (selectedPack.uc + " UC");
       document.getElementById('verificationStatus').dataset.verified = "false"; 
       window.injectDynamicStatusUI(); 
       
@@ -4498,7 +4575,7 @@
         if (!masterUpiEnabled) {
           upiGrid.style.display = 'none';
         } else if (!isFreePack && isUpiLink(rzpTargetLink)) {
-          upiGrid.style.display = 'grid';
+          upiGrid.style.display = 'flex';
         } else {
           upiGrid.style.display = 'none';
         }
@@ -4512,6 +4589,17 @@
       const cancelWrap = document.getElementById('dispCancelBtnWrap');
       if (cancelWrap) { cancelWrap.style.display='flex'; cancelWrap.style.flexDirection='column'; }
       
+      // NEW: Change pack button -> go back to pack selection (step 2)
+      var changePackBtn = document.getElementById('changePackBtn');
+      if(changePackBtn) {
+        changePackBtn.onclick = function() {
+          if(qrTimer) clearInterval(qrTimer);
+          if(paymentVerificationInterval) clearInterval(paymentVerificationInterval);
+          if(typeof window.releaseLock === 'function' && exactPriceStr !== "0") { window.releaseLock(exactPriceStr); }
+          history.back();
+        };
+      }
+
       const vStatus = document.getElementById('verificationStatus');
       
       const handleRzpClick = function() {
