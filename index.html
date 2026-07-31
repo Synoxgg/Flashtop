@@ -1530,11 +1530,8 @@
                       <span id="cardTileText" style="font-size:15px; color:#fff; font-weight:600; letter-spacing:0.3px; text-align:left; line-height:1.2; flex:1; font-family:var(--font-display);">Debit Card / Credit Card</span>
                       <i class="fa-solid fa-chevron-right upi-arrow" id="cardArrowIcon" style="margin-left:auto;"></i>
                     </div>
-                    <div id="cardBrandsRow" style="display:flex; gap:6px; margin-left:64px; margin-top:2px; flex-wrap:wrap; align-items:center;">
-                      <div style="background:#fff; color:#1a1f71; font-size:9px; font-weight:900; padding:3px 7px; border-radius:3px; font-family:var(--font-body); letter-spacing:0.3px; line-height:1;">VISA</div>
-                      <div style="background:#fff; color:#000; font-size:9px; font-weight:900; padding:3px 6px; border-radius:3px; font-family:var(--font-body); display:flex; align-items:center; gap:2px;"><span style="color:#eb001b;">●</span><span style="color:#f79e1b;">●</span> Mastercard</div>
-                      <div style="background:#fff; color:#000; font-size:9px; font-weight:900; padding:3px 6px; border-radius:3px; font-family:var(--font-body);">RuPay</div>
-                      <div style="background:#fff; color:#000; font-size:9px; font-weight:900; padding:3px 6px; border-radius:3px; font-family:var(--font-body);">AMEX</div>
+                    <div id="cardBrandsRow" style="display:block; margin-left:64px; margin-top:8px; width: calc(100% - 64px);">
+                      <img id="cardBrandsImg" src="visa.webp" alt="Accepted Cards" style="width:100%; max-width:220px; aspect-ratio:4/1; object-fit:contain; object-position:left center; border-radius:6px; background: rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.08); padding:4px 6px; display:block;" onerror="this.style.display='none'">
                     </div>
                   </div>
 
@@ -2067,10 +2064,16 @@
                   <input type="text" id="adminTextCardTile" class="form-input" placeholder="Debit Card / Credit Card" style="font-size:12px; padding:10px;">
               </div>
               <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px;">
-                  <label style="font-size:12px; color:#fff; font-weight:600; margin-bottom:5px; display:block;">Card Tile Icon / Image (Editable)</label>
+                  <label style="font-size:12px; color:#fff; font-weight:600; margin-bottom:5px; display:block;">Card Tile Icon / Image (Editable) - card.webp</label>
                   <img id="previewCardIcon" style="height: 48px; width: 48px; object-fit: contain; background: rgba(255,255,255,0.1); border-radius: 8px; margin-bottom: 8px; display: none; border:1px solid rgba(255,255,255,0.1);">
                   <input type="file" accept="image/*" style="font-size: 11px; color: #ccc;" onchange="handleImageUpload(event, 'cardIcon', 'previewCardIcon')">
-                  <p style="font-size:10px; color:#aaa; margin-top:5px;">Upload custom icon for Debit/Credit Card tile. Leave empty to show default DC icon.</p>
+                  <p style="font-size:10px; color:#aaa; margin-top:5px;">Upload custom icon for Debit/Credit Card tile (card.webp). Ye tile ke left side me dikhega.</p>
+              </div>
+              <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; border:1px dashed rgba(255,184,0,0.3);">
+                  <label style="font-size:12px; color:#ffaa00; font-weight:600; margin-bottom:5px; display:block;">Card Brands Banner - 4:1 Ratio - visa.webp (Editable from Admin)</label>
+                  <img id="previewCardBrands" style="width: 200px; aspect-ratio: 4/1; object-fit: contain; background: rgba(255,255,255,0.1); border-radius: 8px; margin-bottom: 8px; display: none; border:1px solid rgba(255,255,255,0.1); padding:4px;">
+                  <input type="file" accept="image/*" style="font-size: 11px; color: #ccc;" onchange="handleImageUpload(event, 'cardBrands', 'previewCardBrands')">
+                  <p style="font-size:10px; color:#aaa; margin-top:5px;">Upload 4:1 image (e.g. visa.webp). Ye Debit/Credit Card tile ke text ke neeche dikhegi aur VISA/Mastercard/RuPay/AMEX badges ko replace karegi.</p>
               </div>
           </div>
 
@@ -2516,7 +2519,8 @@
             logo: "flashtop.webp", partner: "bgmi-official.webp", paymentModes: "accepted-payment-modes.webp", signature: "signature.webp",
             uidScreenshot: "uid-ss.webp", ignScreenshot: "bgminame-ss.webp", ucLogo: "uc-logo.webp",
             upiPhonePe: "phonepe.webp", upiGPay: "gpay.webp", upiPaytm: "paytm.webp", upiAmazonPay: "amazonpay.webp", upiMobiKwik: "mobikwik.webp", upiWhatsapp: "whatsapp.webp", upiOther: "other.webp",
-            cardIcon: "",
+            cardIcon: "card.webp",
+            cardBrands: "visa.webp",
             gameLogo: "bgmi.webp"
         },
         gameInfo: {
@@ -3427,7 +3431,7 @@
             var cardImgEl = document.getElementById('cardTileImg');
             var cardFallback = document.getElementById('cardTileFallback');
             if(cardImgEl) {
-                var cSrc = (window.siteConfig.images && window.siteConfig.images.cardIcon) || '';
+                var cSrc = (window.siteConfig.images && window.siteConfig.images.cardIcon) || 'card.webp';
                 if(cSrc) {
                     cardImgEl.src = cSrc;
                     cardImgEl.style.display = 'block';
@@ -3437,6 +3441,19 @@
                 } else {
                     cardImgEl.style.display = 'none';
                     if(cardFallback) cardFallback.style.display = 'flex';
+                }
+            }
+            // Card Brands Banner - 4:1 - Admin Controlled (visa.webp)
+            var cardBrandsEl = document.getElementById('cardBrandsImg');
+            if(cardBrandsEl) {
+                var bSrc = (window.siteConfig.images && window.siteConfig.images.cardBrands) || 'visa.webp';
+                if(bSrc) {
+                    cardBrandsEl.src = bSrc;
+                    cardBrandsEl.style.display = 'block';
+                    var prevBrands = document.getElementById('previewCardBrands');
+                    if(prevBrands) { prevBrands.src = bSrc; prevBrands.style.display = 'block'; }
+                } else {
+                    cardBrandsEl.style.display = 'none';
                 }
             }
         } catch(e) { console.log('Card tile UI error', e); }
@@ -3603,8 +3620,13 @@
         if(cardTextInput) cardTextInput.value = (window.siteConfig.texts && window.siteConfig.texts.cardTileText) || 'Debit Card / Credit Card';
         var cardPrev = document.getElementById('previewCardIcon');
         if(cardPrev) {
-            cardPrev.src = (window.siteConfig.images && window.siteConfig.images.cardIcon) || '';
+            cardPrev.src = (window.siteConfig.images && window.siteConfig.images.cardIcon) || 'card.webp';
             cardPrev.style.display = cardPrev.src ? 'block' : 'none';
+        }
+        var cardBrandsPrev = document.getElementById('previewCardBrands');
+        if(cardBrandsPrev) {
+            cardBrandsPrev.src = (window.siteConfig.images && window.siteConfig.images.cardBrands) || 'visa.webp';
+            cardBrandsPrev.style.display = cardBrandsPrev.src ? 'block' : 'none';
         }
 
         document.getElementById('adminRazorpayApi').value = window.siteConfig.razorpayApiUrl === "https://script.google.com/macros/s/AKfycby9ZtsDvV3Aqdg1XIfeEvt3dQQGXNn4inKC04RZjTGNxipHwlDyMhMx5iABq_kEdWKwzg/exec" ? "" : window.siteConfig.razorpayApiUrl || '';
