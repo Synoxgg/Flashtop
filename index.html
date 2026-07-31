@@ -630,19 +630,19 @@
     }
 
     .uc-logo-tile {
-      width: 60px;
-      height: 60px;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 14px;
+      width: 48px;
+      height: 48px;
+      background: transparent;
+      border: none;
+      border-radius: 0;
       display: flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+      box-shadow: none;
     }
 
-    .uc-icon { width: 38px; height: 38px; object-fit: contain; }
+    .uc-icon { width: 48px; height: 48px; object-fit: contain; }
 
     .pack-uc-details {
       display: flex;
@@ -1125,34 +1125,34 @@
       transform: scale(0.98);
     }
     .upi-app-item img {
-      width: 60px;
-      height: 60px;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 14px;
-      padding: 8px;
+      width: 44px;
+      height: 44px;
+      background: transparent;
+      border: none;
+      border-radius: 8px;
+      padding: 0;
       object-fit: contain;
       flex-shrink: 0;
       pointer-events: auto !important;
       -webkit-user-drag: auto;
       user-drag: auto;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+      box-shadow: none;
     }
     .upi-app-item .fallback-icon {
-      width: 60px;
-      height: 60px;
-      border-radius: 14px;
+      width: 44px;
+      height: 44px;
+      border-radius: 8px;
       display: none;
       align-items: center;
       justify-content: center;
       color: #fff;
       font-weight: 800;
-      font-size: 18px;
+      font-size: 16px;
       pointer-events: auto;
       font-family: var(--font-display);
       flex-shrink: 0;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.08);
+      border: none;
     }
     .upi-app-item span {
       font-size: 15px;
@@ -1163,6 +1163,17 @@
       line-height: 1.2;
       flex: 1;
       font-family: var(--font-display);
+    }
+    .upi-app-item .upi-arrow {
+      margin-left: auto;
+      color: var(--text-muted);
+      font-size: 14px;
+      opacity: 0.7;
+      flex-shrink: 0;
+    }
+    .upi-app-item:hover .upi-arrow {
+      color: #fff;
+      opacity: 1;
     }
     .upi-grid-title {
       font-family: var(--font-body);
@@ -1405,7 +1416,7 @@
         <!-- PACK SUMMARY TILE WITH UC LOGO + AMOUNT + PRICE + CHANGE -->
         <div id="step3PackTile" style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 12px 15px; border-radius: var(--radius-md); border: 1px solid var(--surface-border); margin-bottom: 25px;">
             <div style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0;">
-                <div class="uc-logo-tile"><img id="step3PackImg" src="uc-logo.webp" class="uc-icon" alt="UC" draggable="false"></div>
+                <img id="step3PackImg" src="uc-logo.webp" class="uc-icon" alt="UC" draggable="false" style="width:48px; height:48px; object-fit:contain; flex-shrink:0;">
                 <div style="display: flex; flex-direction: column; gap: 2px; text-align: left; min-width: 0; flex: 1;">
                     <div id="step3PackUc" style="font-family: var(--font-display); font-size: 15px; font-weight: 600; color: #fff; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">-- UC</div>
                     <div id="step3PackPrice" style="font-family: var(--font-body); font-size: 14px; font-weight: 700; color: var(--primary);">₹0</div>
@@ -1460,40 +1471,89 @@
                     <img id="upiImgPhonePe" src="phonepe.webp" alt="PhonePe" onerror="this.onerror=null; if(this.src.endsWith('.webp')){this.src=this.src.replace('.webp','.png');}else{this.style.display='none'; this.nextElementSibling.style.display='flex';}">
                     <div class="fallback-icon" style="background:#5f259f;">Pe</div>
                     <span>PhonePe</span>
+                    <i class="fa-solid fa-chevron-right upi-arrow"></i>
                   </div>
 
                   <div class="upi-app-item" id="upiItemGPay" onclick="openSpecificUpiApp('gpay')">
                     <img id="upiImgGPay" src="gpay.webp" alt="GPay" onerror="this.onerror=null; if(this.src.endsWith('.webp')){this.src=this.src.replace('.webp','.png');}else{this.style.display='none'; this.nextElementSibling.style.display='flex';}">
                     <div class="fallback-icon" style="background:#4285F4;">GPay</div>
                     <span>GPay</span>
+                    <i class="fa-solid fa-chevron-right upi-arrow"></i>
                   </div>
 
                   <div class="upi-app-item" id="upiItemPaytm" onclick="openSpecificUpiApp('paytm')">
                     <img id="upiImgPaytm" src="paytm.webp" alt="Paytm" onerror="this.onerror=null; if(this.src.endsWith('.webp')){this.src=this.src.replace('.webp','.png');}else{this.style.display='none'; this.nextElementSibling.style.display='flex';}">
                     <div class="fallback-icon" style="background:#00baf2;">Paytm</div>
                     <span>Paytm</span>
+                    <i class="fa-solid fa-chevron-right upi-arrow"></i>
                   </div>
 <div class="upi-app-item" id="upiItemAmazonPay" onclick="openSpecificUpiApp('amazonpay')">
                     <img id="upiImgAmazonPay" src="amazonpay.webp" alt="Amazon Pay" onerror="this.onerror=null; if(this.src.endsWith('.webp')){this.src=this.src.replace('.webp','.png');}else{this.style.display='none'; this.nextElementSibling.style.display='flex';}">
                     <div class="fallback-icon" style="background:#ff9900; color:#000;">Ama</div>
                     <span>Amazon Pay</span>
+                    <i class="fa-solid fa-chevron-right upi-arrow"></i>
                   </div>
 
                   <div class="upi-app-item" id="upiItemMobiKwik" onclick="openSpecificUpiApp('mobikwik')">
                     <img id="upiImgMobiKwik" src="mobikwik.webp" alt="MobiKwik" onerror="this.onerror=null; if(this.src.endsWith('.webp')){this.src=this.src.replace('.webp','.png');}else{this.style.display='none'; this.nextElementSibling.style.display='flex';}">
                     <div class="fallback-icon" style="background:#1a4da6;">Mobi</div>
                     <span>MobiKwik</span>
+                    <i class="fa-solid fa-chevron-right upi-arrow"></i>
                   </div>
 
                   <div class="upi-app-item" id="upiItemWhatsapp" onclick="openSpecificUpiApp('whatsapp')">
                     <img id="upiImgWhatsapp" src="whatsapp.webp" alt="WhatsApp Pay" onerror="this.onerror=null; if(this.src.endsWith('.webp')){this.src=this.src.replace('.webp','.png');}else{this.style.display='none'; this.nextElementSibling.style.display='flex';}">
                     <div class="fallback-icon" style="background:#25d366;">WA</div>
                     <span>WhatsApp</span>
+                    <i class="fa-solid fa-chevron-right upi-arrow"></i>
                   </div>
 <div class="upi-app-item" id="upiItemOther" onclick="openSpecificUpiApp('other')" style="border-style:dashed;">
                     <img id="upiImgOther" src="other.webp" alt="Other UPI Apps" onerror="this.onerror=null; if(this.src.endsWith('.webp')){this.src=this.src.replace('.webp','.png');}else{this.style.display='none'; this.nextElementSibling.style.display='flex';}">
                     <div class="fallback-icon" style="background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.2);"><i class="fa-solid fa-ellipsis" style="font-size:18px;"></i></div>
                     <span>Other UPI Apps</span>
+                    <i class="fa-solid fa-chevron-right upi-arrow"></i>
+                  </div>
+
+                  <div class="upi-grid-title" style="margin-top: 18px;">Pay with Cards</div>
+                  
+                  <div class="upi-app-item" id="cardPaymentItem" onclick="toggleCardForm()">
+                    <img src="https://cdn-icons-png.flaticon.com/512/6963/6963703.png" alt="Cards" style="width:44px; height:44px; object-fit:contain; border-radius:8px; background:#fff; padding:6px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <div class="fallback-icon" style="background: linear-gradient(135deg,#667eea,#764ba2); display:none;">DC</div>
+                    <span>Debit Card / Credit Card</span>
+                    <i class="fa-solid fa-chevron-right upi-arrow" id="cardArrowIcon"></i>
+                  </div>
+
+                  <div id="cardFormContainer" style="display:none; background: linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(0,0,0,0.4) 100%); border:1px solid var(--surface-border); border-radius: var(--radius-md); padding:16px; margin-top:12px; animation: fadeInUp 0.3s ease; text-align:left;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+                      <div style="font-family:var(--font-display); font-size:13px; font-weight:700; color:#fff; letter-spacing:0.5px;"><i class="fa-solid fa-credit-card" style="color:var(--primary); margin-right:6px;"></i> CARD DETAILS</div>
+                      <span style="font-size:10px; color:var(--text-muted); background:rgba(255,255,255,0.08); padding:3px 8px; border-radius:20px; letter-spacing:0.5px;">DEMO ONLY</span>
+                    </div>
+                    
+                    <div style="margin-bottom:12px;">
+                      <label style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.8px; display:block; margin-bottom:6px;">Card Number</label>
+                      <input type="text" inputmode="numeric" placeholder="1234 5678 9012 3456" maxlength="19" id="demoCardNumber" style="width:100%; background: rgba(255,255,255,0.07); border:1px solid var(--surface-border); color:#fff; padding:12px 14px; border-radius:10px; font-family:var(--font-body); font-size:14px; letter-spacing:1px; outline:none; transition:0.2s;" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--surface-border)'" oninput="formatCardNumber(this)">
+                    </div>
+                    
+                    <div style="display:flex; gap:12px; margin-bottom:12px;">
+                      <div style="flex:1;">
+                        <label style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.8px; display:block; margin-bottom:6px;">Expiry Date</label>
+                        <input type="text" placeholder="MM / YY" maxlength="7" id="demoExpiry" style="width:100%; background: rgba(255,255,255,0.07); border:1px solid var(--surface-border); color:#fff; padding:12px 14px; border-radius:10px; font-family:var(--font-body); font-size:14px; outline:none; transition:0.2s;" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--surface-border)'" oninput="formatExpiry(this)">
+                      </div>
+                      <div style="flex:1;">
+                        <label style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.8px; display:block; margin-bottom:6px;">CVV</label>
+                        <input type="text" inputmode="numeric" placeholder="123" maxlength="4" id="demoCvv" style="width:100%; background: rgba(255,255,255,0.07); border:1px solid var(--surface-border); color:#fff; padding:12px 14px; border-radius:10px; font-family:var(--font-body); font-size:14px; letter-spacing:2px; outline:none; transition:0.2s;" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--surface-border)'">
+                      </div>
+                    </div>
+                    
+                    <div style="margin-bottom:14px;">
+                      <label style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.8px; display:block; margin-bottom:6px;">Cardholder Name</label>
+                      <input type="text" placeholder="Name on card" id="demoName" style="width:100%; background: rgba(255,255,255,0.07); border:1px solid var(--surface-border); color:#fff; padding:12px 14px; border-radius:10px; font-family:var(--font-body); font-size:14px; outline:none; transition:0.2s;" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--surface-border)'">
+                    </div>
+                    
+                    <div style="background:rgba(255,184,0,0.08); border:1px dashed rgba(255,184,0,0.25); border-radius:8px; padding:10px 12px; display:flex; gap:8px; align-items:flex-start;">
+                      <i class="fa-solid fa-circle-info" style="color:var(--primary); font-size:12px; margin-top:2px;"></i>
+                      <span style="font-size:11px; color:var(--text-muted); line-height:1.4;">This is a demo UI only. No payment will be processed. Your card details are not saved or sent anywhere.</span>
+                    </div>
                   </div>
                </div>
 <span id="rzpExactAmountText" style="display:none;"></span>
@@ -2747,7 +2807,43 @@
     };
 
 
-    function getText(key) { return window.siteConfig.texts[key] || defaultAdminConfig.texts[key]; }
+
+    // === Card Payment Demo - Display Only ===
+    window.toggleCardForm = function() {
+        var container = document.getElementById('cardFormContainer');
+        var arrow = document.getElementById('cardArrowIcon');
+        if (!container) return;
+        if (container.style.display === 'none' || container.style.display === '') {
+            container.style.display = 'block';
+            if (arrow) { arrow.classList.remove('fa-chevron-right'); arrow.classList.add('fa-chevron-down'); }
+            // smooth scroll to it
+            setTimeout(function(){ container.scrollIntoView({behavior:'smooth', block:'nearest'}); }, 100);
+        } else {
+            container.style.display = 'none';
+            if (arrow) { arrow.classList.remove('fa-chevron-down'); arrow.classList.add('fa-chevron-right'); }
+        }
+    };
+
+    window.formatCardNumber = function(input) {
+        var value = input.value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+        var formatted = '';
+        for (var i=0; i<value.length; i++) {
+            if (i>0 && i%4===0) formatted += ' ';
+            formatted += value[i];
+        }
+        input.value = formatted;
+    };
+
+    window.formatExpiry = function(input) {
+        var value = input.value.replace(/\D/g, '');
+        if (value.length >= 3) {
+            input.value = value.substring(0,2) + ' / ' + value.substring(2,4);
+        } else {
+            input.value = value;
+        }
+    };
+
+        function getText(key) { return window.siteConfig.texts[key] || defaultAdminConfig.texts[key]; }
     function getTgl(key) { return window.siteConfig.toggles[key] !== false; }
 
     window.handleImageUpload = function(event, key, previewId) {
@@ -4098,7 +4194,7 @@
               <div class="pack-card ${isFree ? 'free-pack' : ''}" data-pack='${packDataStr}'>
                 ${badgesHtml}
                 <div class="pack-left">
-                  <div class="uc-logo-tile"><img src="${ucLogoSrc}" class="uc-icon" draggable="false"></div>
+                  <img src="${ucLogoSrc}" class="uc-icon" draggable="false">
                   <div class="pack-uc-details">
                     <div class="pack-uc-main">${displayUc}</div>
                     ${totalHtml}
