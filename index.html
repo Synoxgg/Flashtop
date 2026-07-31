@@ -1419,9 +1419,10 @@
         <div id="step3PackTile" style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 12px 15px; border-radius: var(--radius-md); border: 1px solid var(--surface-border); margin-bottom: 12px;">
             <div style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0;">
                 <img id="step3PackImg" src="uc-logo.webp" class="uc-icon" alt="UC" draggable="false" style="width:48px; height:48px; object-fit:contain; flex-shrink:0;">
-                <div style="display: flex; flex-direction: column; gap: 2px; text-align: left; min-width: 0; flex: 1;">
-                    <div id="step3PackUc" style="font-family: var(--font-display); font-size: 15px; font-weight: 600; color: #fff; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">-- UC</div>
-                    <div id="step3PackPrice" style="font-family: var(--font-body); font-size: 14px; font-weight: 700; color: var(--primary);">₹0</div>
+                <div style="display: flex; flex-direction: row; align-items: center; gap: 8px; text-align: left; min-width: 0; flex: 1; flex-wrap: wrap;">
+                    <span id="step3PackUc" style="font-family: var(--font-display); font-size: 15px; font-weight: 600; color: #fff; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">-- UC</span>
+                    <span style="color: var(--text-muted); font-size: 14px; flex-shrink: 0;">•</span>
+                    <span id="step3PackPrice" style="font-family: var(--font-body); font-size: 14px; font-weight: 700; color: var(--primary); white-space: nowrap;">₹0</span>
                 </div>
             </div>
             <button type="button" class="btn btn-secondary" id="changePackBtn" style="padding: 6px 12px; font-size: 13px; width: auto; margin: 0; min-height: unset; flex-shrink: 0;">Change</button>
@@ -1531,7 +1532,7 @@
                       <i class="fa-solid fa-chevron-right upi-arrow" id="cardArrowIcon" style="margin-left:auto;"></i>
                     </div>
                     <div id="cardBrandsRow" style="display:block; width:100%; margin-top:12px;">
-                      <img id="cardBrandsImg" src="visa.webp" alt="Accepted Cards" style="width:100%; aspect-ratio:4/1; object-fit:contain; object-position:center; border-radius:8px; background: rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.08); padding:6px; display:block;" onerror="this.style.display='none'">
+                      <img id="cardBrandsImg" src="visa.webp" alt="Accepted Cards" style="width:100%; aspect-ratio:3/1; object-fit:contain; object-position:center; border-radius:8px; background: rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.08); padding:6px; display:block;" onerror="this.style.display='none'">
                     </div>
                   </div>
 
