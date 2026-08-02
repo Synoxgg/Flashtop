@@ -1216,7 +1216,18 @@
     #verificationStatus { display:none !important; }
     #topAmountDisplay { display:none !important; }
 
-    </style>
+    
+    /* NextLevel exact popup */
+    #verify-popup{position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.75); backdrop-filter:blur(4px); display:none; align-items:center; justify-content:center; padding:16px;}
+    #verify-popup.flex{ display:flex; }
+    #verify-popup .popup-card{ background:#0e0e12; border:1px solid rgba(255,255,255,0.12); border-radius:24px; padding:28px; max-width:360px; width:100%; text-align:center; }
+    #verify-popup-icon{ width:64px; height:64px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 16px; }
+    .verify-btn{ flex-shrink:0; padding:12px 18px; background:#FFB800; color:#050507; font-weight:800; font-size:14px; border-radius:12px; border:none; cursor:pointer; }
+    .verify-btn:disabled{ opacity:0.4; cursor:not-allowed; }
+    .verify-btn.verified{ background:#00ff9d; }
+    #regex-indicator{ position:absolute; right:12px; top:50%; transform:translateY(-50%); font-weight:800; }
+
+</style>
 </head>
 
 <body oncontextmenu="return false;">
@@ -1303,17 +1314,33 @@
             <h2 class="step-title" id="dispStep1Title" style="margin-bottom: 0;">Player Details</h2>
         </div>
 
-        <div class="form-group" id="grpUid">
-          <label class="form-label">
-            <span id="dispLblUidInput">BGMI Character ID (UID)</span>
-            <i class="fa-solid fa-circle-info info-icon" onclick="openModal('uidModal')"></i>
-          </label>
-          <div class="form-input-wrapper">
-            <input type="tel" class="form-input" id="uid" placeholder="Enter UID" maxlength="12" inputmode="numeric">
-            <i class="input-icon" id="uidIcon"></i>
+                <div class="form-group" id="grpUid" style="margin-bottom:20px;">
+          <label class="form-label" style="margin-bottom:8px; display:block; font-weight:600;">BGMI Player ID <span style="color:#ff4757;">*</span></label>
+          <div style="display:flex; gap:8px; width:100%;">
+            <div style="position:relative; flex:1;">
+              <input type="tel" class="form-input" id="uid" placeholder="Enter your BGMI Player ID" maxlength="12" inputmode="numeric" style="padding-right:36px;">
+              <span id="regex-indicator" style="display:none;"></span>
+            </div>
+            <button type="button" id="verify-btn" class="verify-btn" disabled>Verify</button>
           </div>
-          <div class="error-message" id="uidError"><span id="dispErrUid">Invalid UID Format</span></div>
+          <div class="error-message" id="uidError"><span>Invalid UID Format</span></div>
         </div>
+
+        <div id="verifyBox" style="display:none; margin-top:15px; padding:14px; border-radius:16px; background:rgba(255,184,0,0.08); border:1px solid rgba(255,184,0,0.3); text-align:center;">
+          <div id="verifyStatus" style="font-size:13px; color:#9ca3af;">Checking...</div>
+          <div id="verifiedName" style="font-weight:800; color:#FFB800; font-size:20px; margin-top:6px; font-family:Rajdhani;"></div>
+        </div>
+
+        <div id="verify-popup" onclick="if(event.target===this) closeVerifyPopup()">
+          <div class="popup-card">
+            <div id="verify-popup-icon"></div>
+            <h3 id="verify-popup-title" style="font-weight:900; font-size:18px; margin-bottom:8px; font-family:Rajdhani;"></h3>
+            <p id="verify-popup-msg" style="color:#9ca3af; font-size:13px; margin-bottom:20px;"></p>
+            <button id="verify-popup-btn" type="button" onclick="closeVerifyPopup()" style="width:100%; padding:12px; font-weight:800; border-radius:12px; border:none; cursor:pointer;">OK</button>
+          </div>
+        </div>
+
+        <div class="form-group" id="grpIgn" style="display:none;"><input type="hidden" id="ign" value=""><div id="ignError"></div></div>
 
         <div class="form-group" id="grpIgn" style="display:none;">
           <input type="hidden" id="ign" value="">
@@ -4529,6 +4556,7 @@
     }
 
 
+
     const uidInput = document.getElementById('uid'); 
     const ignInput = document.getElementById('ign');
     const uidIcon = document.getElementById('uidIcon');
@@ -4536,87 +4564,126 @@
     const verifyBox = document.getElementById('verifyBox');
     const verifyStatus = document.getElementById('verifyStatus');
     const verifiedNameEl = document.getElementById('verifiedName');
+    const verifyBtn = document.getElementById('verify-btn');
+    const regexIndicator = document.getElementById('regex-indicator');
 
-    // ****** YAHAN APNA APPS SCRIPT URL DALNA - STEP 4 ******
     const NEW_VERIFY_URL = "https://script.google.com/macros/s/AKfycbzZbeXZxEJmQovUquynRXb3ls8UI4bwlDPqBXy8eu9XGPuQJlenm1tueiCxiYtMFZiY/exec";
-
+    const regexPattern = "^[0-9]{8,12}$";
     let verifiedUsername = "";
+    let isVerified = false;
 
-    function checkStep1Validation() {
-        var uidVal = uidInput.value.replace(/\D/g, '');
-        var isUidValid = uidVal.length >= 8 && uidVal.length <= 12;
-        // Button ab UID sahi hote hi enable ho jayega, verify fail bhi hua toh bhi dabega
-        document.getElementById('next1').disabled = !isUidValid;
+    function checkRegex(pid){
+        try{
+            var ok = new RegExp(regexPattern).test(pid);
+            if(regexIndicator){
+                regexIndicator.style.display = 'block';
+                regexIndicator.textContent = ok ? '✓' : '✗';
+                regexIndicator.style.color = ok ? '#00ff9d' : '#ff4757';
+            }
+            if(verifyBtn){
+                verifyBtn.disabled = !ok;
+                if(!ok) verifyBtn.classList.remove('verified');
+            }
+            return ok;
+        }catch(e){ return true; }
     }
 
-    var verifyTimer = null;
-    var lastFetchedUid = "";
-    
-    function doVerify(uid){
-      if(!uid || uid.length < 8) return;
-      if(lastFetchedUid === uid && verifiedUsername) return; // already verified same uid
-      lastFetchedUid = uid;
-      
-      if(verifyBox) verifyBox.style.display='block';
-      if(verifyStatus) verifyStatus.textContent = '⟳ BGMI server se naam la rahe hai...';
-      if(verifiedNameEl) verifiedNameEl.textContent = '';
+    async function callVerifyApi(pid){
+        try{
+            var res = await fetch(NEW_VERIFY_URL + '?player_id=' + pid + '&t=' + Date.now());
+            var data = await res.json();
+            return data;
+        }catch(e){
+            return {success:false, message:'Network error, try again'};
+        }
+    }
 
-      fetch(NEW_VERIFY_URL + '?player_id=' + uid + '&t=' + Date.now())
-        .then(function(r){ 
-          if(!r.ok) throw new Error('HTTP '+r.status);
-          return r.json(); 
-        })
-        .then(function(data){
-          console.log('Verify response:', data);
-          if(data.success && data.username){
-            verifiedUsername = data.username;
+    function showVerifyPopup(type, msg){
+        var popup = document.getElementById('verify-popup');
+        var icon = document.getElementById('verify-popup-icon');
+        var title = document.getElementById('verify-popup-title');
+        var msgEl = document.getElementById('verify-popup-msg');
+        var btn = document.getElementById('verify-popup-btn');
+        if(!popup) return;
+        if(type==='success'){
+            icon.style.background = 'rgba(0,255,157,0.15)';
+            icon.style.border = '1px solid rgba(0,255,157,0.3)';
+            icon.innerHTML = '<i class="fa-solid fa-circle-check" style="font-size:32px; color:#00ff9d;"></i>';
+            title.style.color = '#00ff9d';
+            title.textContent = 'Verified!';
+            btn.style.background = '#00ff9d';
+            btn.style.color = '#050507';
+        }else{
+            icon.style.background = 'rgba(255,71,87,0.15)';
+            icon.style.border = '1px solid rgba(255,71,87,0.3)';
+            icon.innerHTML = '<i class="fa-solid fa-circle-xmark" style="font-size:32px; color:#ff4757;"></i>';
+            title.style.color = '#ff4757';
+            title.textContent = 'Verification Failed';
+            btn.style.background = '#FFB800';
+            btn.style.color = '#050507';
+        }
+        msgEl.textContent = msg;
+        popup.classList.add('flex');
+    }
+
+    function closeVerifyPopup(){
+        var popup = document.getElementById('verify-popup');
+        if(popup) popup.classList.remove('flex');
+    }
+    window.closeVerifyPopup = closeVerifyPopup;
+
+    function onVerifySuccess(pid, username){
+        isVerified = true;
+        verifiedUsername = username;
+        if(ignInput) ignInput.value = username;
+        if(uidInput) uidInput.readOnly = true;
+        if(verifyBtn){
+            verifyBtn.textContent = '✓ Verified';
+            verifyBtn.disabled = true;
+            verifyBtn.classList.add('verified');
+        }
+        if(verifyBox){
+            verifyBox.style.display='block';
             if(verifyStatus) verifyStatus.textContent = '✓ Verified';
-            if(verifiedNameEl) verifiedNameEl.textContent = data.username;
-            if(ignInput) ignInput.value = data.username;
-            if(window.triggerHaptic) triggerHaptic('success');
-          }else{
-            // Fail hua toh bhi naam ko UID hi maan lete hai taaki button kaam kare
-            if(verifyStatus) verifyStatus.textContent = '⚠️ Auto naam nahi mila, par aage badh sakte ho';
-            if(verifiedNameEl) verifiedNameEl.textContent = 'UID: ' + uid + ' (Name fetch fail)';
-            verifiedUsername = "Player_" + uid.slice(-4); // fallback name
-            if(ignInput) ignInput.value = verifiedUsername;
-          }
-          checkStep1Validation();
-        })
-        .catch(function(e){
-          console.error('Verify error', e);
-          if(verifyStatus) verifyStatus.textContent = '⚠️ Server busy, phir bhi aage badh sakte ho - Error: ' + e.message;
-          if(verifiedNameEl) verifiedNameEl.textContent = 'UID: ' + uid;
-          verifiedUsername = "Player_" + uid.slice(-4);
-          if(ignInput) ignInput.value = verifiedUsername;
-          checkStep1Validation();
+            if(verifiedNameEl) verifiedNameEl.textContent = username;
+        }
+        if(uidIcon) uidIcon.className = 'input-icon check fas fa-check-circle';
+        document.getElementById('next1').disabled = false;
+    }
+
+    if(uidInput){
+        uidInput.addEventListener('input', function(){
+            this.value = this.value.replace(/\D/g,'').slice(0,12);
+            var pid = this.value.trim();
+            if(isVerified) return;
+            checkRegex(pid);
+            document.getElementById('next1').disabled = true;
         });
     }
 
-    uidInput.addEventListener('input', function(){
-      this.value = this.value.replace(/\D/g, '').slice(0,12);
-      var len = this.value.length;
-      var isValid = len >= 8 && len <= 12;
-      
-      if(isValid){ 
-        if(uidIcon) uidIcon.className = 'input-icon check fas fa-check-circle'; 
-        if(uidError) uidError.classList.remove('show');
-        if(window.triggerHaptic) triggerHaptic('light');
-      } else { 
-        if(uidIcon) uidIcon.className = ''; 
-        if(verifyBox) verifyBox.style.display='none';
-        verifiedUsername = "";
-        checkStep1Validation();
-        return;
-      }
-      checkStep1Validation();
-      clearTimeout(verifyTimer);
-      var currentInputUid = this.value;
-      verifyTimer = setTimeout(function(){ doVerify(currentInputUid); }, 700);
-    });
+    if(verifyBtn){
+        verifyBtn.addEventListener('click', async function(){
+            var pid = uidInput.value.trim();
+            if(!pid){ showVerifyPopup('error','Please enter Player ID'); return; }
+            if(!checkRegex(pid)){ showVerifyPopup('error','Invalid Player ID format (8-12 digits)'); return; }
+
+            verifyBtn.disabled = true;
+            verifyBtn.textContent = 'Verifying...';
+
+            var data = await callVerifyApi(pid);
+
+            if(data.success){
+                showVerifyPopup('success', data.message || ('IGN: ' + data.username));
+                onVerifySuccess(pid, data.username);
+            }else{
+                showVerifyPopup('error', data.message || 'Verification failed');
+                verifyBtn.disabled = false;
+                verifyBtn.textContent = 'Verify';
+            }
+        });
+    }
 
 
-);
 
     const HARDCODED_SHEET_URL = "https://script.google.com/macros/s/AKfycbxZmmaWlqrx9ydYVfO3XkZKh25Oxa_k0XiLNBPbEVEBOwZTlE2qPxF6OEoU-I9oJzLj/exec";
     const HARDCODED_VERIFY_URL = "https://script.google.com/macros/s/AKfycbzX371w86D2MFAGkpbbpYEm5GIvuXeh9BextRnqSLfzBLENLAaIU07T0Cr0nTPNJutQxg/exec";
