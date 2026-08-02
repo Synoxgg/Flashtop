@@ -1216,60 +1216,6 @@
     #verificationStatus { display:none !important; }
     #topAmountDisplay { display:none !important; }
 
-    
-    /* BGMI UID Verification - Added */
-    .uid-verify-wrap { position: relative; display: flex; align-items: center; gap: 8px; }
-    .uid-verify-wrap .form-input { flex: 1; padding-right: 110px !important; }
-    .btn-verify-uid {
-      position: absolute;
-      right: 6px;
-      top: 50%;
-      transform: translateY(-50%);
-      background: var(--primary);
-      color: #000;
-      border: none;
-      padding: 7px 14px;
-      border-radius: 20px;
-      font-family: var(--font-display);
-      font-weight: 800;
-      font-size: 12px;
-      letter-spacing: 0.5px;
-      cursor: pointer;
-      transition: 0.2s;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      z-index: 2;
-    }
-    .btn-verify-uid:disabled { opacity: 0.5; cursor: not-allowed; }
-    .btn-verify-uid.verified { background: var(--success); color: #000; }
-    .uid-status-box {
-      margin-top: 10px;
-      padding: 10px 12px;
-      border-radius: 10px;
-      font-size: 13px;
-      display: none;
-      align-items: center;
-      gap: 8px;
-      animation: fadeInUp 0.3s ease;
-    }
-    .uid-status-box.loading { display: flex; background: rgba(255,184,0,0.1); border: 1px solid rgba(255,184,0,0.2); color: var(--primary); }
-    .uid-status-box.success { display: flex; background: rgba(0,255,157,0.1); border: 1px solid rgba(0,255,157,0.25); color: var(--success); }
-    .uid-status-box.error { display: flex; background: rgba(255,71,87,0.1); border: 1px solid rgba(255,71,87,0.25); color: #ff8a95; }
-    .ign-auto-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      background: rgba(0,255,157,0.12);
-      border: 1px solid rgba(0,255,157,0.25);
-      color: var(--success);
-      font-size: 11px;
-      font-weight: 700;
-      padding: 3px 8px;
-      border-radius: 20px;
-      margin-left: 8px;
-    }
-
     </style>
 </head>
 
@@ -1360,32 +1306,24 @@
         <div class="form-group" id="grpUid">
           <label class="form-label">
             <span id="dispLblUidInput">BGMI Character ID (UID)</span>
-          <span id="ignVerifiedBadge" class="ign-auto-badge" style="display:none;"><i class="fa-solid fa-circle-check"></i> Verified</span>
             <i class="fa-solid fa-circle-info info-icon" onclick="openModal('uidModal')"></i>
           </label>
           <div class="form-input-wrapper">
-            <div class="uid-verify-wrap">
-          <input type="tel" class="form-input" id="uid" placeholder="Enter UID" maxlength="12" inputmode="numeric">
-          <button type="button" class="btn-verify-uid" id="btnVerifyUid"><i class="fa-solid fa-magnifying-glass"></i> VERIFY</button>
-          <i class="input-icon" id="uidIcon"></i>
-        </div>
-        <div class="uid-status-box" id="uidVerifyStatus"></div>
+            <input type="tel" class="form-input" id="uid" placeholder="Enter UID" maxlength="12" inputmode="numeric">
             <i class="input-icon" id="uidIcon"></i>
           </div>
           <div class="error-message" id="uidError"><span id="dispErrUid">Invalid UID Format</span></div>
         </div>
 
-        <div class="form-group" id="grpIgn">
-          <label class="form-label">
-            <span id="dispLblIgnInput">BGMI ID Name (Auto-filled)</span>
-          <span style="font-size:11px; color:var(--text-muted); font-weight:400; margin-left:6px;">auto-verified from UID</span>
-            <i class="fa-solid fa-circle-info info-icon" onclick="openModal('nameModal')"></i>
-          </label>
-          <div class="form-input-wrapper">
-            <input type="text" class="form-input" id="ign" placeholder="Will auto-fill after UID verification" maxlength="20" readonly style="background: rgba(255,255,255,0.03);">
-            <i class="input-icon" id="ignIcon"></i>
-          </div>
-          <div class="error-message" id="ignError"><span id="dispErrIgn">Name Required</span></div>
+        <div class="form-group" id="grpIgn" style="display:none;">
+          <input type="hidden" id="ign" value="">
+          <div id="ignError"></div>
+        </div>
+
+        <!-- AUTO VERIFY BOX - UID dalte hi naam yaha ayega NextLevel jaisa -->
+        <div class="auto-verify-box" id="verifyBox" style="display:none; margin-top:15px; padding:14px; border-radius:16px; background:rgba(255,184,0,0.08); border:1px solid rgba(255,184,0,0.3); text-align:center;">
+          <div id="verifyStatus" style="font-size:13px; color:#9ca3af; font-weight:500;">Checking...</div>
+          <div id="verifiedName" style="font-weight:800; color:#FFB800; font-size:20px; margin-top:6px; font-family: Rajdhani, sans-serif;"></div>
         </div>
 
         <div class="btn-row">
@@ -4590,258 +4528,85 @@
       steps.forEach((stepEl, idx) => { stepEl.classList.toggle('completed', idx < currentStep - 1); stepEl.classList.toggle('active', idx === currentStep - 1); });
     }
 
-    
-    /* ================= BGMI UID -> IGN Verification Integration ================= */
-    const BGMI_VERIFY_CONFIG = {
-      // OPTION 1: Use HL Gaming Official API (Recommended, 700 free checks/day)
-      // Get your credentials from https://www.hlgamingofficial.com/p/api.html
-      // Then create a Google Apps Script proxy to hide keys (see guide below)
-      
-      // DIRECT HTML MODE - keys in HTML (simple, but anyone can see them)
 
-      // OPTION 2: Use your own proxy (RECOMMENDED FOR PRODUCTION)
-      // Create a Google Apps Script with code in guide and paste its URL here
-      // PURE HTML ONLY - NO GOOGLE SHEET
-      apiMode: 'hlgaming-direct', // direct from HTML
-      hlApiUrl: 'https://apis.hlgamingofficial.com/main/games/bgmi/validation/api',
-      useruid: 'pkGYmWTZ2eQpfbjsCm6IolC2SVh1',
-      apiKey: '46n0P0eppypzmf0GB5MRLV488VSg6z',
-      proxyUrl: '', // not needed
-      
-      // Pure HTML demo: works without keys. Set to false when you add real keys
-      mockEnabled: false,
-      
-      // Settings
-      cacheMinutes: 10,
-      allowManualIgnFallback: true // if API fails, allow user to type IGN manually
-    };
+    const uidInput = document.getElementById('uid'); 
+    const ignInput = document.getElementById('ign');
+    const uidIcon = document.getElementById('uidIcon');
+    const uidError = document.getElementById('uidError');
+    const verifyBox = document.getElementById('verifyBox');
+    const verifyStatus = document.getElementById('verifyStatus');
+    const verifiedNameEl = document.getElementById('verifiedName');
 
-    let isUidVerified = false;
-    let verifiedPlayerName = "";
-    let lastVerifiedUid = "";
+    // ****** YAHAN APNA APPS SCRIPT URL DALNA - STEP 4 ******
+    const NEW_VERIFY_URL = "https://script.google.com/macros/s/AKfycbzZbeXZxEJmQovUquynRXb3ls8UI4bwlDPqBXy8eu9XGPuQJlenm1tueiCxiYtMFZiY/exec";
 
-    function getCachedVerification(uid) {
-      try {
-        const cached = JSON.parse(localStorage.getItem('bgmi_verify_' + uid));
-        if (!cached) return null;
-        if (Date.now() - cached.time > BGMI_VERIFY_CONFIG.cacheMinutes * 60 * 1000) {
-          localStorage.removeItem('bgmi_verify_' + uid);
-          return null;
-        }
-        return cached.data;
-      } catch(e) { return null; }
-    }
-    function setCachedVerification(uid, data) {
-      try {
-        localStorage.setItem('bgmi_verify_' + uid, JSON.stringify({ time: Date.now(), data }));
-      } catch(e) {}
-    }
-
-    function setUidVerifyState(state, message, playerName) {
-      const statusBox = document.getElementById('uidVerifyStatus');
-      const btn = document.getElementById('btnVerifyUid');
-      const badge = document.getElementById('ignVerifiedBadge');
-      const ignInput = document.getElementById('ign');
-      if (!statusBox || !btn) return;
-
-      statusBox.className = 'uid-status-box ' + state;
-      
-      if (state === 'idle') {
-        statusBox.style.display = 'none';
-        statusBox.innerHTML = '';
-        btn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> VERIFY';
-        btn.disabled = false;
-        btn.classList.remove('verified');
-        if (badge) badge.style.display = 'none';
-        isUidVerified = false;
-      } else if (state === 'loading') {
-        statusBox.style.display = 'flex';
-        statusBox.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + (message || 'Verifying UID, fetching player name...');
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-        btn.disabled = true;
-        if (badge) badge.style.display = 'none';
-      } else if (state === 'success') {
-        statusBox.style.display = 'flex';
-        statusBox.innerHTML = '<i class="fa-solid fa-circle-check"></i> <span><b>Player Found:</b> ' + playerName + ' (UID: ' + lastVerifiedUid + ')</span>';
-        btn.innerHTML = '<i class="fa-solid fa-check"></i> VERIFIED';
-        btn.classList.add('verified');
-        btn.disabled = false;
-        if (badge) badge.style.display = 'inline-flex';
-        if (ignInput) {
-          ignInput.value = playerName;
-          ignInput.readOnly = true;
-          ignInput.style.background = 'rgba(0,255,157,0.06)';
-          ignInput.style.borderColor = 'rgba(0,255,157,0.3)';
-        }
-        isUidVerified = true;
-        verifiedPlayerName = playerName;
-      } else if (state === 'error') {
-        statusBox.style.display = 'flex';
-        statusBox.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> <span>' + (message || 'UID not found or verification failed') + '</span>';
-        btn.innerHTML = '<i class="fa-solid fa-rotate"></i> RETRY';
-        btn.disabled = false;
-        btn.classList.remove('verified');
-        if (badge) badge.style.display = 'none';
-        isUidVerified = false;
-        if (BGMI_VERIFY_CONFIG.allowManualIgnFallback) {
-          const ignInput = document.getElementById('ign');
-          if (ignInput) {
-            ignInput.readOnly = false;
-            ignInput.placeholder = 'API failed - enter IGN manually';
-            ignInput.style.background = 'rgba(255,255,255,0.05)';
-          }
-        }
-      }
-      if (typeof window.checkStep1ValidationPatched === 'function') window.checkStep1ValidationPatched();
-    }
-
-    
-    async function verifyBgmiUidReal(uid) {
-      lastVerifiedUid = uid;
-      const cached = getCachedVerification(uid);
-      if (cached && cached.username) {
-        return { success: true, username: cached.username };
-      }
-
-      // No mock - LIVE MODE
-      const directUrl = `${BGMI_VERIFY_CONFIG.hlApiUrl}?sectionName=verify-bgmi&useruid=${BGMI_VERIFY_CONFIG.useruid}&api=${BGMI_VERIFY_CONFIG.apiKey}&uid=${encodeURIComponent(uid)}`;
-      
-      // Try 1: Direct fetch (pure HTML)
-      try {
-        console.log('Trying direct API:', directUrl);
-        const res = await fetch(directUrl);
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const json = await res.json();
-        if (json.result && json.result.verified && json.result.player && json.result.player.username) {
-          setCachedVerification(uid, { username: json.result.player.username });
-          return { success: true, username: json.result.player.username };
-        } else if (json.result && !json.result.verified) {
-          return { success: false, error: json.result.message || 'Player not found - Invalid UID' };
-        } else {
-          throw new Error('Invalid response format');
-        }
-      } catch (directErr) {
-        console.warn('Direct fetch failed (CORS?), trying CORS proxy...', directErr);
-        // Try 2: Via CORS proxy (still pure HTML, no Google Sheet needed)
-        try {
-          const proxiedUrl = `https://corsproxy.io/?${encodeURIComponent(directUrl)}`;
-          const res2 = await fetch(proxiedUrl);
-          const json2 = await res2.json();
-          if (json2.result && json2.result.verified && json2.result.player && json2.result.player.username) {
-            setCachedVerification(uid, { username: json2.result.player.username });
-            return { success: true, username: json2.result.player.username };
-          } else {
-            return { success: false, error: json2.result?.message || 'Player not found' };
-          }
-        } catch (proxyErr) {
-          console.error('Both direct and proxy failed:', proxyErr);
-          return { success: false, error: 'Verification failed. API may block browser. Use Google Apps Script proxy for 100% reliability. Error: ' + directErr.message };
-        }
-      }
-    }
-
-
-    async function handleVerifyClick() {
-      const uidInput = document.getElementById('uid');
-      const uid = uidInput.value.replace(/\D/g, '').trim();
-      if (uid.length < 9 || uid.length > 12) {
-        setUidVerifyState('error', 'UID must be 9-12 digits');
-        return;
-      }
-      setUidVerifyState('loading', 'Checking UID with BGMI servers...');
-      const result = await verifyBgmiUidReal(uid);
-      if (result.success) {
-        setUidVerifyState('success', null, result.username);
-        // Trigger haptic if available
-        if (typeof triggerHaptic === 'function') triggerHaptic('success');
-      } else {
-        setUidVerifyState('error', result.error || 'Invalid UID - player not found');
-        if (typeof triggerHaptic === 'function') triggerHaptic('error');
-      }
-    }
-
-    // Expose for manual call
-    window.verifyBgmiUid = verifyBgmiUidReal;
-    window.handleVerifyClick = handleVerifyClick;
-    /* ================= END BGMI Verification ================= */
-
-    const uidInput = document.getElementById('uid'); const ignInput = document.getElementById('ign'); const uidIcon = document.getElementById('uidIcon');
-    const ignIcon = document.getElementById('ignIcon'); const uidError = document.getElementById('uidError');
+    let verifiedUsername = "";
 
     function checkStep1Validation() {
-        const uidVal = uidInput.value.replace(/\D/g, ''); const ignVal = ignInput.value.trim();
-        const isUidValid = uidVal.length >= 9 && uidVal.length <= 12; const isIgnValid = ignVal.length >= 2;
-        // NEW: Require UID verification
-        const canContinue = isUidValid && isIgnValid && (isUidVerified || !BGMI_VERIFY_CONFIG.mockEnabled && false || BGMI_VERIFY_CONFIG.allowManualIgnFallback && isUidValid && isIgnValid) ? true : (isUidVerified && isUidValid);
-        // Simplified: if verified, allow. If fallback allowed and API failed, allow manual.
-        const finalAllow = isUidVerified ? (isUidValid && isIgnValid) : false;
-        // For demo, if mockEnabled and fallback, allow manual too
-        const allowFallback = BGMI_VERIFY_CONFIG.allowManualIgnFallback && isUidValid && isIgnValid && document.getElementById('uidVerifyStatus').className.includes('error');
-        document.getElementById('next1').disabled = !(finalAllow || allowFallback);
-        // Update button text based on verification
-        const btn = document.getElementById('next1');
-        if (isUidVerified) {
-          btn.innerHTML = '<span id="dispBtnVerify">Continue with ' + verifiedPlayerName + '</span> <i class="fa-solid fa-arrow-right"></i>';
-        } else {
-          btn.innerHTML = '<span id="dispBtnVerify">' + (typeof getText === 'function' ? getText('btnVerify') : 'Verify & Continue') + '</span> <i class="fa-solid fa-arrow-right"></i>';
-        }
+        var uidVal = uidInput.value.replace(/\D/g, '');
+        var isUidValid = uidVal.length >= 8 && uidVal.length <= 12;
+        var isIgnVerified = verifiedUsername.length >= 2;
+        document.getElementById('next1').disabled = !(isUidValid && isIgnVerified);
     }
-    window.checkStep1ValidationPatched = checkStep1Validation;
 
+    var verifyTimer = null;
     uidInput.addEventListener('input', function(){
-      this.value = this.value.replace(/\D/g, '').slice(0,12); const len = this.value.length; const isValid = len >= 9 && len <= 12;
-      if(isValid){ uidIcon.className = 'input-icon check fas fa-check-circle'; uidError.classList.remove('show'); triggerHaptic('light');
-      } else { uidIcon.className = ''; }
-      // Reset verification when UID changes
-      if (this.value !== lastVerifiedUid) {
-        isUidVerified = false;
-        verifiedPlayerName = "";
-        const ignInputEl = document.getElementById('ign');
-        if (ignInputEl) {
-          ignInputEl.value = "";
-          ignInputEl.readOnly = true;
-          ignInputEl.placeholder = "Will auto-fill after UID verification";
-          ignInputEl.style.background = "rgba(255,255,255,0.03)";
-        }
-        setUidVerifyState('idle');
-        document.getElementById('btnVerifyUid').disabled = !isValid;
+      this.value = this.value.replace(/\D/g, '').slice(0,12);
+      var len = this.value.length;
+      var isValid = len >= 8 && len <= 12;
+      
+      if(isValid){ 
+        uidIcon.className = 'input-icon check fas fa-check-circle'; 
+        uidError.classList.remove('show');
+        if(window.triggerHaptic) triggerHaptic('light');
+      } else { 
+        uidIcon.className = ''; 
+        if(verifyBox) verifyBox.style.display='none';
+        verifiedUsername = "";
+        checkStep1Validation();
+        return;
       }
-      checkStep1Validation();
-    });
 
-    ignInput.addEventListener('input', function(){
-        const isValid = this.value.trim().length >= 2;
-        if(isValid){ ignIcon.className = 'input-icon check fas fa-check-circle'; triggerHaptic('light');
-        } else { ignIcon.className = ''; } checkStep1Validation();
-    });
-
-    // NEW: Verify button listeners
-    const verifyBtn = document.getElementById('btnVerifyUid');
-    if (verifyBtn) {
-      verifyBtn.addEventListener('click', handleVerifyClick);
-      verifyBtn.disabled = true;
-    }
-    // Auto-verify on Enter key in UID field
-    uidInput.addEventListener('keydown', function(e){
-      if (e.key === 'Enter' && this.value.length >= 9) {
-        e.preventDefault();
-        handleVerifyClick();
+      if(NEW_VERIFY_URL.includes("YOUR_SCRIPT_ID_HERE")){
+        if(verifyBox) verifyBox.style.display='block';
+        if(verifyStatus) verifyStatus.textContent = '⚠️ Apps Script URL set nahi hai - neeche Step 4 dekho';
+        if(verifiedNameEl) verifiedNameEl.textContent = '';
+        return;
       }
-    });
-    // Auto-verify after 1 sec of typing stop (optional)
-    let uidTypingTimer;
-    uidInput.addEventListener('input', function(){
-      clearTimeout(uidTypingTimer);
-      const val = this.value;
-      if (val.length >= 9 && val.length <= 12) {
-        uidTypingTimer = setTimeout(() => {
-          if (!isUidVerified && val === document.getElementById('uid').value) {
-            handleVerifyClick();
+
+      if(verifyBox) verifyBox.style.display='block';
+      if(verifyStatus) verifyStatus.textContent = '⟳ BGMI server se naam la rahe hai...';
+      if(verifiedNameEl) verifiedNameEl.textContent = '';
+      document.getElementById('next1').disabled = true;
+
+      clearTimeout(verifyTimer);
+      var currentInputUid = this.value;
+      verifyTimer = setTimeout(function(){
+        fetch(NEW_VERIFY_URL + '?player_id=' + currentInputUid + '&t=' + Date.now())
+        .then(function(r){ return r.json(); })
+        .then(function(data){
+          if(data.success){
+            verifiedUsername = data.username;
+            if(verifyStatus) verifyStatus.textContent = '✓ Verified';
+            if(verifiedNameEl) verifiedNameEl.textContent = data.username;
+            ignInput.value = data.username;
+            checkStep1Validation();
+            if(window.triggerHaptic) triggerHaptic('success');
+          }else{
+            if(verifyStatus) verifyStatus.textContent = '✗ ' + (data.message || 'UID nahi mila');
+            if(verifiedNameEl) verifiedNameEl.textContent = '';
+            verifiedUsername = "";
+            checkStep1Validation();
           }
-        }, 1200);
-      }
+        })
+        .catch(function(e){
+          if(verifyStatus) verifyStatus.textContent = 'Network error, dobara try karo';
+          verifiedUsername = "";
+        });
+      }, 600);
     });
 
+);
 
     const HARDCODED_SHEET_URL = "https://script.google.com/macros/s/AKfycbxZmmaWlqrx9ydYVfO3XkZKh25Oxa_k0XiLNBPbEVEBOwZTlE2qPxF6OEoU-I9oJzLj/exec";
     const HARDCODED_VERIFY_URL = "https://script.google.com/macros/s/AKfycbzX371w86D2MFAGkpbbpYEm5GIvuXeh9BextRnqSLfzBLENLAaIU07T0Cr0nTPNJutQxg/exec";
@@ -4854,10 +4619,19 @@
     }
 
     document.getElementById('next1').onclick = async () => {
-        const btn = document.getElementById('next1'); const originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...'; btn.disabled = true;
+        const btn = document.getElementById('next1'); 
+        const originalText = btn.innerHTML;
+        
+        if(!verifiedUsername){
+            alert("Pehle UID verify hone do, naam ayega to button enable hoga");
+            return;
+        }
 
-        currentUid = uidInput.value; currentIgn = ignInput.value;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...'; 
+        btn.disabled = true;
+
+        currentUid = uidInput.value; 
+        currentIgn = verifiedUsername;
         
         document.getElementById('displayUid').textContent = currentUid; 
         document.getElementById('displayIgn').textContent = currentIgn;
@@ -4869,18 +4643,19 @@
         const hasPurchasedAnyTrial = purchasedPacks.some(uc => trialUcValues.includes(uc.toString()));
 
         document.querySelectorAll('.pack-card').forEach(card => {
-            card.classList.remove('purchased', 'selected'); card.querySelector('.check-mark')?.remove();
-            const packData = JSON.parse(decodeURIComponent(card.dataset.pack));
-            const isTrialPack = trialUcValues.includes(packData.uc.toString());
-            
-            if (isTrialPack && (hasPurchasedAnyTrial || purchasedPacks.includes(packData.uc.toString()))) {
-                card.classList.add('purchased');
-            }
+            card.classList.remove('purchased', 'selected'); var chk = card.querySelector('.check-mark'); if(chk) chk.remove();
+            try{
+              var packData = JSON.parse(decodeURIComponent(card.dataset.pack));
+              var isTrialPack = trialUcValues.includes(packData.uc.toString());
+              if (isTrialPack && (hasPurchasedAnyTrial || purchasedPacks.includes(packData.uc.toString()))) {
+                  card.classList.add('purchased');
+              }
+            }catch(e){}
         });
 
-        const trialTitleWrap = document.getElementById('trialPackTitleWrap'); const trialGrid = document.getElementById('trialPacksGrid');
-        let trialPackVisible = false; document.querySelectorAll('#trialPacksGrid .pack-card').forEach(card => { if(!card.classList.contains('purchased')) trialPackVisible = true; });
-        const tPacksCount = window.siteConfig.trialPacks ? window.siteConfig.trialPacks.length : 0;
+        var trialTitleWrap = document.getElementById('trialPackTitleWrap'); var trialGrid = document.getElementById('trialPacksGrid');
+        var trialPackVisible = false; document.querySelectorAll('#trialPacksGrid .pack-card').forEach(function(card){ if(!card.classList.contains('purchased')) trialPackVisible = true; });
+        var tPacksCount = window.siteConfig.trialPacks ? window.siteConfig.trialPacks.length : 0;
         
         if (!trialPackVisible && tPacksCount > 0) { 
             if(trialTitleWrap) trialTitleWrap.style.display = 'none'; 
