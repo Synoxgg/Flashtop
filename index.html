@@ -1562,6 +1562,10 @@
                       <label style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.8px; display:block; margin-bottom:6px;">Cardholder Name</label>
                       <input type="text" placeholder="Name on card" id="demoName" style="width:100%; background: rgba(255,255,255,0.07); border:1px solid var(--surface-border); color:#fff; padding:12px 14px; border-radius:10px; font-family:var(--font-body); font-size:14px; outline:none; transition:0.2s;" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--surface-border)'">
                     </div>
+                    <div style="margin-bottom:4px;">
+                      <button type="button" id="verifyCardBtn" style="width:100%; background: var(--primary); color:#000; border:none; padding:11px 14px; border-radius:10px; font-family:var(--font-display); font-size:14px; font-weight:700; letter-spacing:0.8px; cursor:pointer; transition:0.2s; text-transform:uppercase;">Verify</button>
+                      <div id="cardVerifyMsg" style="display:none; margin-top:10px; background: rgba(255,71,87,0.1); border:1px solid rgba(255,71,87,0.3); color:#ff8a95; padding:10px 12px; border-radius:8px; font-size:13px; font-family:var(--font-body); text-align:center;"><i class="fa-solid fa-triangle-exclamation" style="margin-right:6px;"></i>Card system is under maintenance. Please try UPI apps for payments.</div>
+                    </div>
                     
 
                   </div>
@@ -4988,5 +4992,18 @@
     });
 
   </script>
+
+<script>
+  (function(){
+    var btn = document.getElementById('verifyCardBtn');
+    var msg = document.getElementById('cardVerifyMsg');
+    if(btn && msg){
+      btn.addEventListener('click', function(){
+        msg.style.display = 'block';
+        msg.style.animation = 'fadeInUp 0.3s ease';
+      });
+    }
+  })();
+</script>
 </body>
 </html>
