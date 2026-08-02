@@ -4545,66 +4545,76 @@
     function checkStep1Validation() {
         var uidVal = uidInput.value.replace(/\D/g, '');
         var isUidValid = uidVal.length >= 8 && uidVal.length <= 12;
-        var isIgnVerified = verifiedUsername.length >= 2;
-        document.getElementById('next1').disabled = !(isUidValid && isIgnVerified);
+        // Button ab UID sahi hote hi enable ho jayega, verify fail bhi hua toh bhi dabega
+        document.getElementById('next1').disabled = !isUidValid;
     }
 
     var verifyTimer = null;
+    var lastFetchedUid = "";
+    
+    function doVerify(uid){
+      if(!uid || uid.length < 8) return;
+      if(lastFetchedUid === uid && verifiedUsername) return; // already verified same uid
+      lastFetchedUid = uid;
+      
+      if(verifyBox) verifyBox.style.display='block';
+      if(verifyStatus) verifyStatus.textContent = '⟳ BGMI server se naam la rahe hai...';
+      if(verifiedNameEl) verifiedNameEl.textContent = '';
+
+      fetch(NEW_VERIFY_URL + '?player_id=' + uid + '&t=' + Date.now())
+        .then(function(r){ 
+          if(!r.ok) throw new Error('HTTP '+r.status);
+          return r.json(); 
+        })
+        .then(function(data){
+          console.log('Verify response:', data);
+          if(data.success && data.username){
+            verifiedUsername = data.username;
+            if(verifyStatus) verifyStatus.textContent = '✓ Verified';
+            if(verifiedNameEl) verifiedNameEl.textContent = data.username;
+            if(ignInput) ignInput.value = data.username;
+            if(window.triggerHaptic) triggerHaptic('success');
+          }else{
+            // Fail hua toh bhi naam ko UID hi maan lete hai taaki button kaam kare
+            if(verifyStatus) verifyStatus.textContent = '⚠️ Auto naam nahi mila, par aage badh sakte ho';
+            if(verifiedNameEl) verifiedNameEl.textContent = 'UID: ' + uid + ' (Name fetch fail)';
+            verifiedUsername = "Player_" + uid.slice(-4); // fallback name
+            if(ignInput) ignInput.value = verifiedUsername;
+          }
+          checkStep1Validation();
+        })
+        .catch(function(e){
+          console.error('Verify error', e);
+          if(verifyStatus) verifyStatus.textContent = '⚠️ Server busy, phir bhi aage badh sakte ho - Error: ' + e.message;
+          if(verifiedNameEl) verifiedNameEl.textContent = 'UID: ' + uid;
+          verifiedUsername = "Player_" + uid.slice(-4);
+          if(ignInput) ignInput.value = verifiedUsername;
+          checkStep1Validation();
+        });
+    }
+
     uidInput.addEventListener('input', function(){
       this.value = this.value.replace(/\D/g, '').slice(0,12);
       var len = this.value.length;
       var isValid = len >= 8 && len <= 12;
       
       if(isValid){ 
-        uidIcon.className = 'input-icon check fas fa-check-circle'; 
-        uidError.classList.remove('show');
+        if(uidIcon) uidIcon.className = 'input-icon check fas fa-check-circle'; 
+        if(uidError) uidError.classList.remove('show');
         if(window.triggerHaptic) triggerHaptic('light');
       } else { 
-        uidIcon.className = ''; 
+        if(uidIcon) uidIcon.className = ''; 
         if(verifyBox) verifyBox.style.display='none';
         verifiedUsername = "";
         checkStep1Validation();
         return;
       }
-
-      if(NEW_VERIFY_URL.includes("YOUR_SCRIPT_ID_HERE")){
-        if(verifyBox) verifyBox.style.display='block';
-        if(verifyStatus) verifyStatus.textContent = '⚠️ Apps Script URL set nahi hai - neeche Step 4 dekho';
-        if(verifiedNameEl) verifiedNameEl.textContent = '';
-        return;
-      }
-
-      if(verifyBox) verifyBox.style.display='block';
-      if(verifyStatus) verifyStatus.textContent = '⟳ BGMI server se naam la rahe hai...';
-      if(verifiedNameEl) verifiedNameEl.textContent = '';
-      document.getElementById('next1').disabled = true;
-
+      checkStep1Validation();
       clearTimeout(verifyTimer);
       var currentInputUid = this.value;
-      verifyTimer = setTimeout(function(){
-        fetch(NEW_VERIFY_URL + '?player_id=' + currentInputUid + '&t=' + Date.now())
-        .then(function(r){ return r.json(); })
-        .then(function(data){
-          if(data.success){
-            verifiedUsername = data.username;
-            if(verifyStatus) verifyStatus.textContent = '✓ Verified';
-            if(verifiedNameEl) verifiedNameEl.textContent = data.username;
-            ignInput.value = data.username;
-            checkStep1Validation();
-            if(window.triggerHaptic) triggerHaptic('success');
-          }else{
-            if(verifyStatus) verifyStatus.textContent = '✗ ' + (data.message || 'UID nahi mila');
-            if(verifiedNameEl) verifiedNameEl.textContent = '';
-            verifiedUsername = "";
-            checkStep1Validation();
-          }
-        })
-        .catch(function(e){
-          if(verifyStatus) verifyStatus.textContent = 'Network error, dobara try karo';
-          verifiedUsername = "";
-        });
-      }, 600);
+      verifyTimer = setTimeout(function(){ doVerify(currentInputUid); }, 700);
     });
+
 
 );
 
@@ -4618,7 +4628,33 @@
         } catch (e) { console.error("UID Check Error:", e); return []; }
     }
 
+    // FIXED: Button hamesha dabega, verify nahi hua toh yahi pe try karega
     document.getElementById('next1').onclick = async () => {
+        var uidNow = uidInput.value.replace(/\D/g,'');
+        if(uidNow.length < 8){
+            alert("Sahi UID dalo");
+            return;
+        }
+        // Agar abhi tak verified nahi hai toh pehle verify kar le
+        if(!verifiedUsername){
+            var btnTmp = document.getElementById('next1');
+            btnTmp.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
+            try{
+              var resTmp = await fetch(NEW_VERIFY_URL + '?player_id=' + uidNow + '&t=' + Date.now());
+              var dataTmp = await resTmp.json();
+              if(dataTmp.success){
+                verifiedUsername = dataTmp.username;
+                currentIgn = dataTmp.username;
+              }else{
+                verifiedUsername = "Player_" + uidNow.slice(-4);
+                currentIgn = verifiedUsername;
+              }
+            }catch(e){
+              verifiedUsername = "Player_" + uidNow.slice(-4);
+              currentIgn = verifiedUsername;
+            }
+        }
+
         const btn = document.getElementById('next1'); 
         const originalText = btn.innerHTML;
         
