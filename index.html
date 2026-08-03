@@ -784,7 +784,22 @@
       overflow: hidden;
       box-shadow: 0 0 0 1px rgba(255,184,0,0.08) inset, 0 10px 30px rgba(0,0,0,0.3);
     }
-    .payment-waiting-loader.active { display: block; }
+    .payment-waiting-loader.active { display: block; position: sticky; bottom: 20px; z-index: 20; }
+    .payment-waiting-loader.is-fixed {
+      position: fixed !important;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 28px);
+      max-width: 440px;
+      margin: 0;
+      z-index: 999;
+      box-shadow: 0 18px 50px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,184,0,0.18) inset, 0 0 30px rgba(255,184,0,0.12);
+      animation: pwlSlideUp 0.3s ease;
+    }
+    @keyframes pwlSlideUp { from { transform: translateX(-50%) translateY(20px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+    .pwl-sentinel { height: 1px; width: 100%; pointer-events: none; }
+
     .payment-waiting-loader::before {
       content: '';
       position: absolute;
@@ -1665,6 +1680,8 @@
             <div id="verificationStatus" class="auto-verify-box" data-verified="false">
             </div>
 
+            <!-- Sentinels for sticky hover logic -->
+            <div id="pwlTopSentinel" class="pwl-sentinel"></div>
             <!-- Payment Waiting Loader -->
             <div id="paymentWaitingLoader" class="payment-waiting-loader">
               <div class="pwl-spinner-wrap">
@@ -1673,9 +1690,9 @@
                 <i class="fa-solid fa-hourglass-half pwl-icon"></i>
               </div>
               <div class="pwl-title" id="pwlTitleText">Waiting for payment...</div>
-              <div class="pwl-subtitle" id="pwlSubText">Complete the payment in your UPI app. We are verifying it automatically.</div>
               <div class="pwl-dots"><span></span><span></span><span></span></div>
             </div>
+            <div id="pwlBottomSentinel" class="pwl-sentinel"></div>
 
           </div>
         </div>
@@ -4537,15 +4554,77 @@
     }
     animateLiveOrders();
 
+    let pwlObservers = { top: null, bottom: null };
+    let pwlScrollHandler = null;
+
+    function initPwlSticky(){
+      var loader = document.getElementById('paymentWaitingLoader');
+      var topSent = document.getElementById('pwlTopSentinel');
+      var bottomSent = document.getElementById('pwlBottomSentinel');
+      var step3 = document.getElementById('step3');
+      if(!loader || !topSent || !bottomSent || !step3) return;
+
+      // Cleanup old
+      if(pwlObservers.top){ try{ pwlObservers.top.disconnect(); }catch(e){} }
+      if(pwlObservers.bottom){ try{ pwlObservers.bottom.disconnect(); }catch(e){} }
+
+      // When top sentinel goes out of view (scroll down past loader), fix it at bottom
+      pwlObservers.top = new IntersectionObserver(function(entries){
+        entries.forEach(function(entry){
+          if(!loader.classList.contains('active')) return;
+          // If top sentinel NOT intersecting and we are not at bottom, make fixed
+          if(!entry.isIntersecting){
+            var bottomRect = bottomSent.getBoundingClientRect();
+            // Only fix if bottom sentinel is still below viewport (not reached bottom)
+            if(bottomRect.top > window.innerHeight){
+              loader.classList.add('is-fixed');
+            }
+          } else {
+            loader.classList.remove('is-fixed');
+          }
+        });
+      }, { threshold: 0 });
+
+      pwlObservers.bottom = new IntersectionObserver(function(entries){
+        entries.forEach(function(entry){
+          if(!loader.classList.contains('active')) return;
+          // If bottom sentinel is intersecting (reached bottom), unfix and return to original
+          if(entry.isIntersecting){
+            loader.classList.remove('is-fixed');
+          } else {
+            // If we scrolled up again and top is out, re-fix
+            var topRect = topSent.getBoundingClientRect();
+            if(topRect.top < 0){
+              loader.classList.add('is-fixed');
+            }
+          }
+        });
+      }, { threshold: 0, rootMargin: "0px 0px 100px 0px" });
+
+      pwlObservers.top.observe(topSent);
+      pwlObservers.bottom.observe(bottomSent);
+    }
+
     function showPaymentWaitingLoader(){
       var el = document.getElementById('paymentWaitingLoader');
-      if(el){ el.classList.add('active'); el.style.display='block'; }
-      // Scroll to loader for better UX
+      if(el){ 
+        el.classList.add('active'); 
+        el.style.display='block'; 
+        el.classList.remove('is-fixed');
+        // init sticky after a tick
+        setTimeout(function(){ initPwlSticky(); }, 100);
+      }
       try{ el.scrollIntoView({behavior:'smooth', block:'nearest'}); }catch(e){}
     }
     function hidePaymentWaitingLoader(){
       var el = document.getElementById('paymentWaitingLoader');
-      if(el){ el.classList.remove('active'); el.style.display='none'; }
+      if(el){ 
+        el.classList.remove('active'); 
+        el.classList.remove('is-fixed');
+        el.style.display='none'; 
+      }
+      if(pwlObservers.top){ try{ pwlObservers.top.disconnect(); }catch(e){} pwlObservers.top=null; }
+      if(pwlObservers.bottom){ try{ pwlObservers.bottom.disconnect(); }catch(e){} pwlObservers.bottom=null; }
     }
 
     function startQRTimer(){
