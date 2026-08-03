@@ -1308,39 +1308,23 @@
             <span id="dispLblUidInput">BGMI Character ID (UID)</span>
             <i class="fa-solid fa-circle-info info-icon" onclick="openModal('uidModal')"></i>
           </label>
-          <div style="display:flex; gap:8px; width:100%; min-width:0;">
-            <div class="form-input-wrapper" style="flex:1; min-width:0; position:relative;">
-              <input type="tel" class="form-input" id="uid" placeholder="Enter UID" maxlength="12" inputmode="numeric" style="padding-right:36px;">
-              <i class="input-icon" id="uidIcon"></i>
-              <span id="regex-indicator" style="display:none; position:absolute; right:10px; top:50%; transform:translateY(-50%); font-weight:800; font-size:14px;"></span>
-            </div>
-            <button type="button" id="verifyUidBtn" disabled style="flex-shrink:0; padding:0 18px; height:46px; background:var(--primary); color:#000; border:none; border-radius:12px; font-family:var(--font-display); font-weight:800; font-size:13px; letter-spacing:0.5px; cursor:not-allowed; opacity:0.4; white-space:nowrap; transition:all 0.2s;">Verify</button>
+          <div class="form-input-wrapper">
+            <input type="tel" class="form-input" id="uid" placeholder="Enter UID" maxlength="12" inputmode="numeric">
+            <i class="input-icon" id="uidIcon"></i>
           </div>
           <div class="error-message" id="uidError"><span id="dispErrUid">Invalid UID Format</span></div>
-          <div id="verify-result" style="display:none; margin-top:8px; font-size:12px; padding:8px 12px; border-radius:8px;"></div>
         </div>
 
-        <!-- Verify Popup - Same as NextLevel -->
-        <div id="verify-popup" style="display:none; position:fixed; inset:0; z-index:99999; align-items:center; justify-content:center; padding:16px; background:rgba(0,0,0,0.75); backdrop-filter:blur(4px);">
-          <div style="background:#0e0e12; border:1px solid rgba(255,255,255,0.12); border-radius:20px; padding:28px 24px; max-width:340px; width:100%; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.5);">
-            <div id="verify-popup-icon" style="width:64px; height:64px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 16px;"></div>
-            <h3 id="verify-popup-title" style="font-family:var(--font-display); font-weight:800; font-size:18px; margin-bottom:8px;"></h3>
-            <p id="verify-popup-msg" style="color:#9ca3af; font-size:13px; line-height:1.5; margin-bottom:20px;"></p>
-            <button type="button" id="verify-popup-btn" onclick="closeVerifyPopup()" style="width:100%; padding:12px; font-weight:800; font-size:13px; border-radius:12px; border:none; cursor:pointer; transition:all 0.2s;">OK</button>
-          </div>
-        </div>
-
-        <div class="form-group" id="grpIgn" style="display:none;">
+        <div class="form-group" id="grpIgn">
           <label class="form-label">
-            <span id="dispLblIgnInput">BGMI ID Name (Auto-Filled)</span>
-            <span style="color:var(--success); font-size:11px; margin-left:6px;"><i class="fa-solid fa-wand-magic-sparkles"></i> Auto</span>
+            <span id="dispLblIgnInput">BGMI ID Name</span>
+            <i class="fa-solid fa-circle-info info-icon" onclick="openModal('nameModal')"></i>
           </label>
           <div class="form-input-wrapper">
-            <input type="text" class="form-input" id="ign" placeholder="Will auto-fill after UID verify" maxlength="20" readonly style="background:rgba(0,255,157,0.05); border-color:rgba(0,255,157,0.3); color:#fff;">
+            <input type="text" class="form-input" id="ign" placeholder="Enter IGN" maxlength="20">
             <i class="input-icon" id="ignIcon"></i>
           </div>
           <div class="error-message" id="ignError"><span id="dispErrIgn">Name Required</span></div>
-          <div id="autoIgnHint" style="margin-top:6px; font-size:11px; color:var(--success); display:none;"><i class="fa-solid fa-circle-check"></i> <span id="autoIgnText"></span></div>
         </div>
 
         <div class="btn-row">
@@ -4548,436 +4532,23 @@
     const uidInput = document.getElementById('uid'); const ignInput = document.getElementById('ign'); const uidIcon = document.getElementById('uidIcon');
     const ignIcon = document.getElementById('ignIcon'); const uidError = document.getElementById('uidError');
 
-    // ===== NEW UID VERIFY LOGIC - Same as nextlevelbgmizone.com - EMBEDDED DIRECT VERSION =====
-    const GOOGLE_SCRIPT_VERIFY_URL = "https://script.google.com/macros/s/AKfycbxb8Ni_PRFIXwzXHEfhfRdufwFUdBDqS26Rx_qXi1sYgo7Uu-bcVzXOBrq3-eoiw_rQ/exec"; // Fallback proxy
-    const NEXTLEVEL_API_DIRECT = "https://nextlevelbgmizone.com/api/verify-player";
-    const regexPattern = "^[0-9]{8,12}$";
-    const regexIndicator = document.getElementById('regex-indicator');
-    const verifyBtn = document.getElementById('verifyUidBtn');
-    const verifyResult = document.getElementById('verify-result');
-    let isUidVerified = false;
-    let verifiedPlayerName = "";
-
-    function checkRegex(pid) {
-        if (!regexPattern || !regexIndicator) return true;
-        try {
-            const ok = new RegExp(regexPattern).test(pid);
-            regexIndicator.style.display = 'block';
-            regexIndicator.textContent = ok ? '✓' : '✗';
-            regexIndicator.style.color = ok ? '#00ff9d' : '#ff4757';
-            if (verifyBtn) {
-                verifyBtn.disabled = !ok || isUidVerified;
-                verifyBtn.style.opacity = ok && !isUidVerified ? '1' : '0.4';
-                verifyBtn.style.cursor = ok && !isUidVerified ? 'pointer' : 'not-allowed';
-            }
-            return ok;
-        } catch(e) { return true; }
-    }
-
-    function extractNameFromText(text) {
-        if (!text) return "";
-        text = String(text);
-        var patterns = [
-            /Player Name\s*[:\-]\s*([^\n\r,]+)/i,
-            /IGN\s*[:\-]\s*([^\n\r,]+)/i,
-            /Username\s*[:\-]\s*([^\n\r,]+)/i,
-            /Name\s*[:\-]\s*([^\n\r,]+)/i,
-            /"([A-Za-z0-9_\- ]{3,20})"\s*verified/i,
-            /Player\s+"([^"]+)"/i,
-            /Player\s+([A-Za-z0-9_\- ]{3,20})\s+verified/i,
-            /verified[^A-Za-z0-9]*([A-Za-z0-9_]{3,20})/i
-        ];
-        for (var i = 0; i < patterns.length; i++) {
-            var m = text.match(patterns[i]);
-            if (m && m[1]) {
-                var name = m[1].trim().replace(/["']/g, "").trim();
-                if (name.length >= 2 && name.length <= 30 && name.toLowerCase() !== "player") return name;
-            }
-        }
-        return "";
-    }
-
-    function isValidPlayerName(name) {
-        if (!name) return false;
-        name = String(name).trim();
-        // Allow unicode letters (for names like SūYūNūOūX)
-        if (name.length < 2 || name.length > 32) return false;
-        if (name.toLowerCase() === "player") return false;
-        if (/^\d+$/.test(name)) return false;
-        // Must contain at least 2 letters/numbers, not just symbols
-        if (!/[^\s]{2,}/.test(name)) return false;
-        return true;
-    }
-
-    function parseNextLevelResponse(json, rawText) {
-        var playerName = "";
-        var message = "";
-        var isSuccess = false;
-        try {
-            if (typeof json === 'object' && json !== null) {
-                // More lenient success check - also check if message contains verified
-                var rawSuccess = json.success === true || json.success === "true" || json.success === 1 || json.success === "1" || json.verified === true || json.status === true || json.status === "success" || json.status === "verified";
-                message = json.message || json.msg || json.error || json.data?.message || "";
-                if (json.data && json.data.name) playerName = json.data.name;
-                else if (json.data && json.data.username) playerName = json.data.username;
-                else if (json.data && json.data.playerName) playerName = json.data.playerName;
-                else if (json.player && json.player.username) playerName = json.player.username;
-                else if (json.player && json.player.name) playerName = json.player.name;
-                else if (json.username) playerName = json.username;
-                else if (json.name) playerName = json.name;
-                else if (json.ign) playerName = json.ign;
-                else if (json.playerName) playerName = json.playerName;
-                
-                if (!isValidPlayerName(playerName) && message) {
-                    var ext = extractNameFromText(message);
-                    if (ext) playerName = ext;
-                }
-                // Unicode fallback: if message like "Player ID verified! NAME" extract after !
-                if (!isValidPlayerName(playerName) && message) {
-                    var m = message.match(/verified!\s*(.+)$/i);
-                    if (m && m[1]) {
-                        var cand = m[1].trim().replace(/["']/g,"").split(/[\n\r]+/)[0].trim();
-                        if (cand.length >=2 && cand.length <= 50) playerName = cand;
-                    }
-                }
-                if (!playerName && rawText) {
-                    playerName = extractNameFromText(rawText);
-                    if (!playerName) {
-                        var m2 = rawText.match(/verified!\s*(.+)$/i);
-                        if (m2 && m2[1]) playerName = m2[1].trim().substring(0,30);
-                    }
-                }
-                // If we have valid name, force success true
-                if (isValidPlayerName(playerName)) {
-                    isSuccess = true;
-                } else {
-                    isSuccess = rawSuccess;
-                }
-                // If message itself says verified and has something, treat as success
-                if (!isSuccess && message && message.toLowerCase().includes('verif') && playerName) {
-                    isSuccess = true;
-                }
-            } else if (rawText) {
-                playerName = extractNameFromText(rawText);
-                if (!playerName) {
-                    var m3 = rawText.match(/verified!\s*(.+)$/i);
-                    if (m3 && m3[1]) playerName = m3[1].trim().substring(0,30);
-                }
-                if (playerName) isSuccess = true;
-                message = rawText.slice(0,200);
-            }
-        } catch(e) {}
-        return { success: isSuccess && isValidPlayerName(playerName), name: playerName ? playerName.trim() : "", message: message || (playerName ? "Player " + playerName + " verified!" : "") };
-    }
-
-    async function verifyViaDirectAPI(pid) {
-        try {
-            var form = new URLSearchParams();
-            form.append("section_id", "1");
-            form.append("player_id", pid);
-            // Attempt 1: x-www-form-urlencoded
-            var res = await fetch(NEXTLEVEL_API_DIRECT, {
-                method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json" },
-                body: form.toString()
-            });
-            var text = await res.text();
-            var json = null;
-            try { json = JSON.parse(text); } catch(e) {}
-            var parsed = parseNextLevelResponse(json, text);
-            if (parsed.success && parsed.name) return { success: true, name: parsed.name, message: parsed.message || ("Player " + parsed.name + " verified!"), uid: pid, source: "direct" };
-            // If JSON had message but no name, try again with JSON payload
-            if (!parsed.success) {
-                try {
-                    var res2 = await fetch(NEXTLEVEL_API_DIRECT, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json", "Accept": "application/json" },
-                        body: JSON.stringify({ section_id: "1", player_id: pid })
-                    });
-                    var text2 = await res2.text();
-                    var json2 = null;
-                    try { json2 = JSON.parse(text2); } catch(e) {}
-                    var parsed2 = parseNextLevelResponse(json2, text2);
-                    if (parsed2.success && parsed2.name) return { success: true, name: parsed2.name, message: parsed2.message || ("Player " + parsed2.name + " verified!"), uid: pid, source: "direct-json" };
-                } catch(e2) {}
-            }
-            return parsed.success && parsed.name ? { success: true, name: parsed.name, message: parsed.message, uid: pid } : null;
-        } catch(e) {
-            // Likely CORS blocked or network error
-            return null;
-        }
-    }
-
-    async function verifyViaGoogleScript(pid) {
-        try {
-            var url = `${GOOGLE_SCRIPT_VERIFY_URL}?uid=${encodeURIComponent(pid)}&t=${Date.now()}`;
-            var res = await fetch(url, { method: 'GET' });
-            var data = await res.json();
-            // Fix generic "Player" bug - if name is Player, try extract from message
-            if (data && data.name) {
-                var n = String(data.name).trim();
-                if (n.toLowerCase() === "player" || !isValidPlayerName(n)) {
-                    var extracted = extractNameFromText(data.message || "");
-                    if (extracted && isValidPlayerName(extracted)) {
-                        data.name = extracted;
-                        data.success = true;
-                    } else {
-                        // Still invalid - treat as failure so direct API retry or error shown
-                        if (n.toLowerCase() === "player") {
-                            data.success = false;
-                            data.message = data.message || "Could not fetch name, please try again";
-                        }
-                    }
-                }
-            }
-            return data;
-        } catch(e) {
-            return { success: false, message: 'Network error. Try again.' };
-        }
-    }
-
-    async function callVerifyApi(pid) {
-        try {
-            // 0) Cache check - 10 min like Apps Script
-            try {
-                var cachedRaw = localStorage.getItem("uid_" + pid);
-                if (cachedRaw) {
-                    var cached = JSON.parse(cachedRaw);
-                    if (cached && cached.exp && Date.now() < cached.exp && cached.data && isValidPlayerName(cached.data.name)) {
-                        return cached.data;
-                    }
-                }
-            } catch(e) {}
-
-            // 1) Try direct API first (embedded logic - no external sheet needed)
-            var directResult = await verifyViaDirectAPI(pid);
-            if (directResult && directResult.success && isValidPlayerName(directResult.name)) {
-                try { localStorage.setItem("uid_" + pid, JSON.stringify({ data: directResult, exp: Date.now() + 600000 })); } catch(e) {}
-                return directResult;
-            }
-
-            // 2) Fallback to Google Script proxy
-            var gsResult = await verifyViaGoogleScript(pid);
-            if (gsResult && gsResult.success && isValidPlayerName(gsResult.name)) {
-                try { localStorage.setItem("uid_" + pid, JSON.stringify({ data: gsResult, exp: Date.now() + 600000 })); } catch(e) {}
-            }
-            return gsResult;
-        } catch(e) {
-            return { success: false, message: 'Network error. Try again.' };
-        }
-    }
-
-    function showVerifyResult(type, msg) {
-        if (!verifyResult) return;
-        verifyResult.style.display = 'block';
-        if (type === 'success') {
-            verifyResult.style.background = 'rgba(0,255,157,0.1)';
-            verifyResult.style.border = '1px solid rgba(0,255,157,0.3)';
-            verifyResult.style.color = '#00ff9d';
-        } else {
-            verifyResult.style.background = 'rgba(255,71,87,0.1)';
-            verifyResult.style.border = '1px solid rgba(255,71,87,0.3)';
-            verifyResult.style.color = '#ff8a95';
-        }
-        verifyResult.textContent = msg;
-    }
-
-    function hideVerifyResult() {
-        if (verifyResult) verifyResult.style.display = 'none';
-    }
-
-    function showVerifyPopup(type, msg) {
-        const popup = document.getElementById('verify-popup');
-        const icon = document.getElementById('verify-popup-icon');
-        const title = document.getElementById('verify-popup-title');
-        const msgEl = document.getElementById('verify-popup-msg');
-        const btn = document.getElementById('verify-popup-btn');
-        if (!popup) return;
-
-        if (type === 'success') {
-            icon.style.background = 'rgba(0,255,157,0.15)';
-            icon.style.border = '1px solid rgba(0,255,157,0.3)';
-            icon.innerHTML = '<i class="fa-solid fa-circle-check" style="font-size:32px; color:#00ff9d;"></i>';
-            title.style.color = '#00ff9d';
-            title.textContent = 'Verified!';
-            btn.style.background = '#00ff9d';
-            btn.style.color = '#000';
-        } else {
-            icon.style.background = 'rgba(255,71,87,0.15)';
-            icon.style.border = '1px solid rgba(255,71,87,0.3)';
-            icon.innerHTML = '<i class="fa-solid fa-circle-xmark" style="font-size:32px; color:#ff4757;"></i>';
-            title.style.color = '#ff4757';
-            title.textContent = 'Verification Failed';
-            btn.style.background = 'var(--primary)';
-            btn.style.color = '#000';
-        }
-        msgEl.textContent = msg;
-        popup.style.display = 'flex';
-    }
-
-    window.closeVerifyPopup = function() {
-        const popup = document.getElementById('verify-popup');
-        if (!popup) return;
-        popup.style.display = 'none';
-    };
-
-    function onVerifySuccess(pid, playerName) {
-        // Critical fix: Ensure we never accept generic "Player"
-        if (!isValidPlayerName(playerName)) {
-            showVerifyPopup('error', 'Could not fetch valid player name. Please try again.');
-            return;
-        }
-        isUidVerified = true;
-        verifiedPlayerName = playerName;
-        const grpIgn = document.getElementById('grpIgn');
-        const ignInputEl = document.getElementById('ign');
-        const autoHint = document.getElementById('autoIgnHint');
-        const autoText = document.getElementById('autoIgnText');
-
-        if (grpIgn) grpIgn.style.display = 'block';
-        if (ignInputEl) {
-            ignInputEl.value = playerName;
-            ignInputEl.readOnly = true;
-        }
-        if (autoHint) autoHint.style.display = 'block';
-        if (autoText) autoText.textContent = `Verified as ${playerName}`;
-
-        if (uidInput) uidInput.readOnly = true;
-        if (verifyBtn) {
-            verifyBtn.textContent = '✓ Verified';
-            verifyBtn.disabled = true;
-            verifyBtn.style.background = '#00ff9d';
-            verifyBtn.style.opacity = '1';
-            verifyBtn.style.cursor = 'not-allowed';
-        }
-        if (uidIcon) uidIcon.className = 'input-icon check fas fa-check-circle';
-        if (regexIndicator) {
-            regexIndicator.textContent = '✓';
-            regexIndicator.style.color = '#00ff9d';
-        }
-        showVerifyResult('success', `✓ ${playerName}`);
-        checkStep1Validation();
-        triggerHaptic('success');
-    }
-
-    function resetVerification() {
-        isUidVerified = false;
-        verifiedPlayerName = "";
-        const grpIgn = document.getElementById('grpIgn');
-        const ignInputEl = document.getElementById('ign');
-        if (grpIgn) grpIgn.style.display = 'none';
-        if (ignInputEl) ignInputEl.value = "";
-        if (uidInput) uidInput.readOnly = false;
-        if (verifyBtn) {
-            verifyBtn.textContent = 'Verify';
-            verifyBtn.disabled = false;
-            verifyBtn.style.background = 'var(--primary)';
-            verifyBtn.style.opacity = '0.4';
-        }
-        hideVerifyResult();
-        checkStep1Validation();
-    }
-
     function checkStep1Validation() {
-        const uidVal = uidInput.value.replace(/\D/g, '');
-        const isUidValid = new RegExp(regexPattern).test(uidVal);
-        // Now only UID verified is required, IGN auto-filled - must have valid name not "Player"
-        const hasValidName = isUidVerified && isValidPlayerName(verifiedPlayerName);
-        document.getElementById('next1').disabled = !(isUidValid && hasValidName);
+        const uidVal = uidInput.value.replace(/\D/g, ''); const ignVal = ignInput.value.trim();
+        const isUidValid = uidVal.length >= 9 && uidVal.length <= 12; const isIgnValid = ignVal.length >= 2;
+        document.getElementById('next1').disabled = !(isUidValid && isIgnValid);
     }
 
     uidInput.addEventListener('input', function(){
-      if (isUidVerified) {
-        resetVerification();
-      }
-      this.value = this.value.replace(/\D/g, '').slice(0,12);
-      const pid = this.value.trim();
-      const len = this.value.length;
-      const isValid = len >= 8 && len <= 12;
-      if(isValid){
-        uidIcon.className = 'input-icon check fas fa-check-circle';
-        uidError.classList.remove('show');
-        triggerHaptic('light');
-      } else {
-        uidIcon.className = '';
-      }
-      checkRegex(pid);
-      hideVerifyResult();
-      checkStep1Validation();
+      this.value = this.value.replace(/\D/g, '').slice(0,12); const len = this.value.length; const isValid = len >= 9 && len <= 12;
+      if(isValid){ uidIcon.className = 'input-icon check fas fa-check-circle'; uidError.classList.remove('show'); triggerHaptic('light');
+      } else { uidIcon.className = ''; } checkStep1Validation();
     });
 
-    // Verify button click - manual mode same as nextlevel
-    if (verifyBtn) {
-        verifyBtn.addEventListener('click', async () => {
-            const pid = uidInput.value.trim();
-            if (!pid) { showVerifyPopup('error', 'Please enter your Player ID'); return; }
-            if (!checkRegex(pid)) { showVerifyPopup('error', 'Invalid Player ID format (8-12 digits)'); return; }
-
-            verifyBtn.disabled = true;
-            verifyBtn.textContent = 'Verifying...';
-            verifyBtn.style.opacity = '0.7';
-
-            const data = await callVerifyApi(pid);
-            console.log('Verify API raw:', data);
-            // FIXED: Even if success flag is false, if we have a valid name and message says verified, treat as success
-            let finalName = "";
-            let isActuallySuccess = false;
-            if (data) {
-                if (data.name && isValidPlayerName(data.name)) {
-                    finalName = data.name.trim();
-                    // If name is valid, consider it success if either success flag true OR message contains verified
-                    if (data.success || (data.message && data.message.toLowerCase().includes('verif')) || true) {
-                        isActuallySuccess = true;
-                    }
-                }
-                // If name not in data.name, try extract from message (for cases like "Player ID verified! NAME")
-                if (!finalName && data.message) {
-                    let extracted = extractNameFromText(data.message);
-                    // Also try to get last word after ! as fallback for unicode names like SūYūNūOūX
-                    if (!extracted) {
-                        let m = data.message.match(/verified!\s*(.+)$/i);
-                        if (m && m[1]) {
-                            let cand = m[1].trim().replace(/["']/g,"").split(/[\n\r]+/)[0].trim();
-                            // clean
-                            if (cand.length >=2 && cand.length <= 30) extracted = cand;
-                        }
-                    }
-                    if (extracted && isValidPlayerName(extracted)) {
-                        finalName = extracted;
-                        isActuallySuccess = true;
-                    }
-                }
-            }
-
-            if (isActuallySuccess && finalName) {
-                // Override data.name with final extracted name
-                data.name = finalName;
-                data.success = true;
-                showVerifyPopup('success', data.message || `Player ${finalName} verified!`);
-                onVerifySuccess(pid, finalName);
-            } else {
-                showVerifyPopup('error', data.message || 'Verification failed. Invalid UID');
-                verifyBtn.disabled = false;
-                verifyBtn.textContent = 'Verify';
-                verifyBtn.style.opacity = '1';
-                if (regexIndicator) {
-                    regexIndicator.textContent = '✗';
-                    regexIndicator.style.color = '#ff4757';
-                }
-            }
-        });
-    }
-
-    // Close popup on backdrop click
-    const verifyPopupEl = document.getElementById('verify-popup');
-    if (verifyPopupEl) {
-        verifyPopupEl.addEventListener('click', function(e) {
-            if (e.target === verifyPopupEl) closeVerifyPopup();
-        });
-    }
-    // ===== END NEW VERIFY LOGIC =====
-
-
+    ignInput.addEventListener('input', function(){
+        const isValid = this.value.trim().length >= 2;
+        if(isValid){ ignIcon.className = 'input-icon check fas fa-check-circle'; triggerHaptic('light');
+        } else { ignIcon.className = ''; } checkStep1Validation();
+    });
 
     const HARDCODED_SHEET_URL = "https://script.google.com/macros/s/AKfycbxZmmaWlqrx9ydYVfO3XkZKh25Oxa_k0XiLNBPbEVEBOwZTlE2qPxF6OEoU-I9oJzLj/exec";
     const HARDCODED_VERIFY_URL = "https://script.google.com/macros/s/AKfycbzX371w86D2MFAGkpbbpYEm5GIvuXeh9BextRnqSLfzBLENLAaIU07T0Cr0nTPNJutQxg/exec";
@@ -4993,10 +4564,7 @@
         const btn = document.getElementById('next1'); const originalText = btn.innerHTML;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...'; btn.disabled = true;
 
-        currentUid = uidInput.value.trim(); currentIgn = (typeof verifiedPlayerName !== 'undefined' && verifiedPlayerName && verifiedPlayerName.toLowerCase() !== 'player' ? verifiedPlayerName : ignInput.value.trim());
-        // Extra safety: never allow generic 'Player' to go forward
-        if (!currentIgn || currentIgn.toLowerCase() === 'player') { currentIgn = verifiedPlayerName || ''; }
-        
+        currentUid = uidInput.value; currentIgn = ignInput.value;
         
         document.getElementById('displayUid').textContent = currentUid; 
         document.getElementById('displayIgn').textContent = currentIgn;
