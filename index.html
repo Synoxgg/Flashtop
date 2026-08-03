@@ -1313,6 +1313,13 @@
     .success-tile { display:flex; align-items:center; gap:10px; }
     
 </style>
+
+<style>
+.game-banner-slide img { pointer-events: auto !important; }
+.game-banner-slider-wrap { display: none; }
+.game-banner-slider-wrap.has-banners { display: block !important; }
+</style>
+
 </head>
 
 <body oncontextmenu="return false;">
@@ -3076,7 +3083,7 @@
                 return;
             }
 
-            wrap.style.display = 'block';
+            wrap.style.display = 'block'; wrap.classList.add('has-banners');
             if(window.gameBannerInterval) { clearInterval(window.gameBannerInterval); window.gameBannerInterval = null; }
 
             // Create fresh track to remove old listeners
@@ -4596,6 +4603,32 @@
       if (!isBack) { history.pushState({ step: step, type: 'step' }, document.title, window.location.href); }
       document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
       document.getElementById(`step${step}`).classList.add('active'); currentStep = step; updateProgress();
+      // FIX: If returning to step1 via back navigation, ensure verify button is not stuck in Verifying/Loading
+      if (step === 1 && isBack) {
+          try {
+            if (typeof resetVerification === 'function' && !isUidVerified) {
+                // If already not verified, just ensure button text is Verify and state correct
+                const vb = document.getElementById('verifyUidBtn');
+                if (vb && (vb.innerHTML.includes('Verifying') || vb.innerHTML.includes('Loading'))) {
+                    vb.innerHTML = 'Verify';
+                    const uidEl = document.getElementById('uid');
+                    const curPid = uidEl ? uidEl.value.trim() : '';
+                    if (typeof checkRegex === 'function') checkRegex(curPid);
+                }
+            } else if (step === 1 && isBack && typeof resetVerification === 'function') {
+                // When coming back from step 2/3, fully reset so Verify is clickable
+                // Don't clear UID value here, keep it for UX, but make editable
+                const uidEl = document.getElementById('uid');
+                if (uidEl) { uidEl.readOnly = false; uidEl.style.cursor = 'text'; }
+                resetVerification();
+                // restore UID value after reset if it existed (resetVerification clears ign but not uid)
+                // Ensure button enable based on existing UID
+                const uidVal = uidEl ? uidEl.value.trim() : '';
+                if (uidVal && typeof checkRegex === 'function') checkRegex(uidVal);
+            }
+          } catch(e) {}
+      }
+
       
       // UPDATED: Show game-info-card on step 1,2,3 - hide only on step 4 (last page)
       try {
@@ -5064,10 +5097,24 @@
         }
         if (verifyBtn) {
             verifyBtn.innerHTML = 'Verify';
-            verifyBtn.disabled = true;
             verifyBtn.style.background = 'var(--primary)';
-            verifyBtn.style.opacity = '0.4';
-            verifyBtn.style.cursor = 'not-allowed';
+            // enable/disable based on current UID input
+            const curPid = uidInput ? uidInput.value.trim() : '';
+            if (typeof checkRegex === 'function') {
+                checkRegex(curPid);
+            } else {
+                verifyBtn.disabled = true;
+                verifyBtn.style.opacity = '0.4';
+                verifyBtn.style.cursor = 'not-allowed';
+            }
+            // fallback if checkRegex disabled it but input is valid, ensure proper style
+            if (verifyBtn.disabled) {
+                verifyBtn.style.opacity = '0.4';
+                verifyBtn.style.cursor = 'not-allowed';
+            } else {
+                verifyBtn.style.opacity = '1';
+                verifyBtn.style.cursor = 'pointer';
+            }
         }
         hideVerifyResult();
         checkStep1Validation();
@@ -5101,14 +5148,20 @@
         }
         if (verifyBtn) {
             verifyBtn.innerHTML = 'Verify';
-            verifyBtn.disabled = true;
             verifyBtn.style.background = 'var(--primary)';
-            verifyBtn.style.opacity = '0.4';
-            verifyBtn.style.cursor = 'not-allowed';
         }
         hideVerifyResult();
         const pid = uidInput ? uidInput.value.trim() : '';
-        checkRegex(pid);
+        if (typeof checkRegex === 'function') checkRegex(pid);
+        if (verifyBtn) {
+            if (verifyBtn.disabled) {
+                verifyBtn.style.opacity = '0.4';
+                verifyBtn.style.cursor = 'not-allowed';
+            } else {
+                verifyBtn.style.opacity = '1';
+                verifyBtn.style.cursor = 'pointer';
+            }
+        }
         triggerHaptic('light');
     }
 
@@ -5148,12 +5201,17 @@
                 try {
                     await proceedToPackSelection();
                 } finally {
-                    // keep disabled state until reset, but restore if still on step1 (in case of error)
-                    if (currentStep === 1) {
+                    // FIX: Always restore button from Loading... to Continue if still verified,
+                    // so back navigation doesn't leave it stuck in Loading/Verifying state
+                    if (isUidVerified) {
                         verifyBtn.innerHTML = 'Continue <i class="fa-solid fa-arrow-right" style="margin-left:6px;"></i>';
                         verifyBtn.disabled = false;
                         verifyBtn.style.opacity = '1';
                         verifyBtn.style.cursor = 'pointer';
+                    } else {
+                        const curPid = uidInput ? uidInput.value.trim() : '';
+                        verifyBtn.innerHTML = 'Verify';
+                        if (typeof checkRegex === 'function') checkRegex(curPid);
                     }
                 }
                 return;
@@ -5785,6 +5843,28 @@
             modal.classList.remove('active'); document.body.classList.remove('modal-open');
         });
 
+        // FIX: When navigating back to step 1 via browser/mobile back button,
+        // reset UID verification so button doesn't stay stuck in Verifying/Loading
+        const isGoingToStep1 = (!state && currentStep > 1) || (state && state.type === 'step' && state.step === 1);
+        if (isGoingToStep1) {
+            if (typeof resetVerification === 'function') {
+                resetVerification();
+            } else {
+                // fallback direct reset
+                if (typeof isUidVerified !== 'undefined') isUidVerified = false;
+                if (typeof verifiedPlayerName !== 'undefined') verifiedPlayerName = "";
+                const vb = document.getElementById('verifyUidBtn');
+                if (vb) {
+                    vb.innerHTML = 'Verify';
+                    vb.style.background = 'var(--primary)';
+                }
+                const uidEl = document.getElementById('uid');
+                if (uidEl) { uidEl.readOnly = false; uidEl.style.cursor = 'text'; }
+                const vr = document.getElementById('verify-result');
+                if (vr) vr.style.display = 'none';
+            }
+        }
+
         if (state) {
             if (state.type === 'step') { showStep(state.step, true);
             } else if (state.type === 'modal') { window.openModal(state.modal, true); }
@@ -5806,6 +5886,372 @@
       });
     }
   })();
+</script>
+<script>
+    // ===== PATCHED: Game Info Banners - Fixed & Integrated from old file =====
+    // Ensure banner functions are robust and save to DB/localStorage
+    window.gameBannerInterval = window.gameBannerInterval || null;
+    window.currentBannerIndex = window.currentBannerIndex || 1;
+    window._bannerTouchStartX = 0;
+    window._bannerIsDragging = false;
+    window._bannerRealCount = 0;
+    window._isTransitioning = false;
+    window._bannerWasDrag = false;
+
+    window.updateBannerPosition = function() {
+        var track = document.getElementById('gameBannerTrack');
+        if(!track) return;
+        track.style.transform = 'translateX(-' + (window.currentBannerIndex * 100) + '%)';
+    };
+
+    window.renderGameBanners = function() {
+        try {
+            var wrap = document.getElementById('gameBannerSliderWrap');
+            var oldTrack = document.getElementById('gameBannerTrack');
+            if(!wrap || !oldTrack) {
+                console.log('Banner wrap/track not found');
+                return;
+            }
+            var gi = window.siteConfig && window.siteConfig.gameInfo ? window.siteConfig.gameInfo : {};
+            var banners = gi.banners || [];
+            // Filter valid banners
+            banners = banners.filter(b => b && typeof b === 'string' && b.length > 20);
+
+            console.log('renderGameBanners: found', banners.length, 'banners');
+
+            if(banners.length === 0) {
+                wrap.style.display = 'none';
+                oldTrack.innerHTML = '';
+                if(window.gameBannerInterval) { clearInterval(window.gameBannerInterval); window.gameBannerInterval = null; }
+                window._bannerRealCount = 0;
+                return;
+            }
+
+            wrap.style.display = 'block'; wrap.classList.add('has-banners');
+            if(window.gameBannerInterval) { clearInterval(window.gameBannerInterval); window.gameBannerInterval = null; }
+
+            // Create fresh track to remove old listeners
+            var track = oldTrack.cloneNode(false);
+            track.id = 'gameBannerTrack';
+            track.className = oldTrack.className;
+            if(oldTrack.parentNode) oldTrack.parentNode.replaceChild(track, oldTrack);
+
+            if(banners.length === 1) {
+                track.innerHTML = `<div class="game-banner-slide"><img src="${banners[0]}" alt="Game Banner" draggable="false" loading="lazy" style="pointer-events:auto !important;"></div>`;
+                track.style.transition = 'none';
+                track.style.transform = 'translateX(0%)';
+                window.currentBannerIndex = 0;
+                window._bannerRealCount = 1;
+                window._isTransitioning = false;
+                return;
+            }
+
+            // Infinite loop: [last, ...banners, first]
+            var extended = [];
+            extended.push(banners[banners.length - 1]);
+            extended = extended.concat(banners);
+            extended.push(banners[0]);
+
+            track.innerHTML = extended.map(src => `<div class="game-banner-slide"><img src="${src}" alt="Game Banner" draggable="false" loading="lazy" style="pointer-events:auto !important;"></div>`).join('');
+            window._bannerRealCount = banners.length;
+            window.currentBannerIndex = 1;
+            window._isTransitioning = false;
+
+            track.style.transition = 'none';
+            track.style.transform = 'translateX(-' + (window.currentBannerIndex * 100) + '%)';
+            track.offsetHeight;
+            track.style.transition = 'transform 0.5s ease-in-out';
+
+            track.addEventListener('transitionend', function() {
+                if(window._bannerRealCount <= 1) return;
+                if(window.currentBannerIndex === 0) {
+                    track.style.transition = 'none';
+                    window.currentBannerIndex = window._bannerRealCount;
+                    track.style.transform = 'translateX(-' + (window.currentBannerIndex * 100) + '%)';
+                    track.offsetHeight;
+                    track.style.transition = 'transform 0.5s ease-in-out';
+                } else if(window.currentBannerIndex === window._bannerRealCount + 1) {
+                    track.style.transition = 'none';
+                    window.currentBannerIndex = 1;
+                    track.style.transform = 'translateX(-' + (window.currentBannerIndex * 100) + '%)';
+                    track.offsetHeight;
+                    track.style.transition = 'transform 0.5s ease-in-out';
+                }
+                window._isTransitioning = false;
+            });
+
+            window.gameBannerInterval = setInterval(() => {
+                if(window._isTransitioning) return;
+                window._isTransitioning = true;
+                window.currentBannerIndex++;
+                window.updateBannerPosition();
+            }, 2500);
+
+            track.addEventListener('touchstart', function(e) {
+                window._bannerTouchStartX = e.touches[0].clientX;
+                window._bannerIsDragging = true;
+                if(window.gameBannerInterval) { clearInterval(window.gameBannerInterval); window.gameBannerInterval = null; }
+            }, {passive:true});
+
+            track.addEventListener('touchend', function(e) {
+                if(!window._bannerIsDragging) return;
+                window._bannerIsDragging = false;
+                var endX = e.changedTouches[0].clientX;
+                var diff = window._bannerTouchStartX - endX;
+                if(Math.abs(diff) > 50 && !window._isTransitioning) {
+                    window._isTransitioning = true;
+                    window._bannerWasDrag = true;
+                    if(diff > 0) window.currentBannerIndex++; else window.currentBannerIndex--;
+                    window.updateBannerPosition();
+                }
+                if(window._bannerRealCount > 1) {
+                    if(window.gameBannerInterval) clearInterval(window.gameBannerInterval);
+                    window.gameBannerInterval = setInterval(() => {
+                        if(window._isTransitioning) return;
+                        window._isTransitioning = true;
+                        window.currentBannerIndex++;
+                        window.updateBannerPosition();
+                    }, 2500);
+                }
+            }, {passive:true});
+
+            var mouseDown = false;
+            track.addEventListener('mousedown', function(e) {
+                mouseDown = true;
+                window._bannerTouchStartX = e.clientX;
+                if(window.gameBannerInterval) { clearInterval(window.gameBannerInterval); window.gameBannerInterval = null; }
+                e.preventDefault();
+            });
+            track.addEventListener('mouseup', function(e) {
+                if(!mouseDown) return;
+                mouseDown = false;
+                var diff = window._bannerTouchStartX - e.clientX;
+                if(Math.abs(diff) > 50 && !window._isTransitioning) {
+                    window._isTransitioning = true;
+                    window._bannerWasDrag = true;
+                    if(diff > 0) window.currentBannerIndex++; else window.currentBannerIndex--;
+                    window.updateBannerPosition();
+                } else { window._bannerWasDrag = false; }
+                if(window._bannerRealCount > 1) {
+                    if(window.gameBannerInterval) clearInterval(window.gameBannerInterval);
+                    window.gameBannerInterval = setInterval(() => {
+                        if(window._isTransitioning) return;
+                        window._isTransitioning = true;
+                        window.currentBannerIndex++;
+                        window.updateBannerPosition();
+                    }, 2500);
+                }
+            });
+            track.addEventListener('mouseleave', function() { mouseDown = false; });
+
+            track.addEventListener('click', function(e) {
+                if(window._bannerWasDrag) { window._bannerWasDrag = false; return; }
+                if(window._isTransitioning) return;
+                var rect = track.getBoundingClientRect();
+                var clickX = e.clientX - rect.left;
+                var isLeftSide = clickX < rect.width / 2;
+                window._isTransitioning = true;
+                if(isLeftSide) window.currentBannerIndex--; else window.currentBannerIndex++;
+                window.updateBannerPosition();
+                if(window._bannerRealCount > 1) {
+                    if(window.gameBannerInterval) clearInterval(window.gameBannerInterval);
+                    window.gameBannerInterval = setInterval(() => {
+                        if(window._isTransitioning) return;
+                        window._isTransitioning = true;
+                        window.currentBannerIndex++;
+                        window.updateBannerPosition();
+                    }, 2500);
+                }
+            });
+            track.style.cursor = 'pointer';
+
+        } catch(e) { console.log('renderGameBanners error', e); }
+    };
+
+    window.addEventListener('resize', function() {
+        if(window.updateBannerPosition) window.updateBannerPosition();
+    });
+
+    window.renderAdminGameBannersList = function() {
+        var listEl = document.getElementById('adminGameBannersList');
+        if(!listEl) return;
+        var banners = (window.siteConfig && window.siteConfig.gameInfo && window.siteConfig.gameInfo.banners) || [];
+        if(banners.length === 0) {
+            listEl.innerHTML = '<div style="font-size:11px; color:#777; padding:8px; background:rgba(255,255,255,0.03); border-radius:6px; text-align:center;">No banners added yet. 2:1 images upload karo.</div>';
+            return;
+        }
+        listEl.innerHTML = banners.map((src, idx) => `
+            <div style="display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.05); padding:6px; border-radius:8px; border:1px solid rgba(255,255,255,0.08);">
+                <img src="${src}" style="width:60px; height:30px; object-fit:cover; border-radius:4px; flex-shrink:0; border:1px solid rgba(255,255,255,0.1);">
+                <span style="flex:1; font-size:10px; color:#aaa;">Banner ${idx+1}</span>
+                <button type="button" onclick="deleteGameBanner(${idx})" style="background:rgba(255,71,87,0.2); border:1px solid rgba(255,71,87,0.3); color:#ff4757; padding:4px 8px; border-radius:6px; cursor:pointer; font-size:11px;"><i class="fas fa-times"></i></button>
+            </div>
+        `).join('');
+    };
+
+    window.deleteGameBanner = function(idx) {
+        if(!window.siteConfig.gameInfo) window.siteConfig.gameInfo = {};
+        if(!Array.isArray(window.siteConfig.gameInfo.banners)) window.siteConfig.gameInfo.banners = [];
+        window.siteConfig.gameInfo.banners.splice(idx, 1);
+        window.renderAdminGameBannersList();
+        window.renderGameBanners();
+        // Auto save to localStorage
+        try { localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(window.siteConfig)); } catch(e) {}
+        if(window.saveConfigToDB) { window.saveConfigToDB(window.siteConfig); }
+    };
+
+    window.clearAllGameBanners = function() {
+        if(!confirm('Saare banners delete karne hain?')) return;
+        if(!window.siteConfig.gameInfo) window.siteConfig.gameInfo = {};
+        window.siteConfig.gameInfo.banners = [];
+        window.renderAdminGameBannersList();
+        window.renderGameBanners();
+        try { localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(window.siteConfig)); } catch(e) {}
+        if(window.saveConfigToDB) { window.saveConfigToDB(window.siteConfig); }
+    };
+
+    window.handleGameBannersUpload = function(event) {
+        var files = event.target.files;
+        if(!files || files.length === 0) return;
+        if(!window.siteConfig.gameInfo) window.siteConfig.gameInfo = {};
+        if(!Array.isArray(window.siteConfig.gameInfo.banners)) window.siteConfig.gameInfo.banners = [];
+
+        var remaining = files.length;
+        var processed = [];
+
+        console.log('Uploading', files.length, 'banners');
+
+        Array.from(files).forEach(file => {
+            if(!file.type.startsWith('image/')) { 
+                remaining--; 
+                if(remaining===0 && processed.length>0) {
+                    window.siteConfig.gameInfo.banners = window.siteConfig.gameInfo.banners.concat(processed);
+                    window.renderAdminGameBannersList();
+                    window.renderGameBanners();
+                    try { localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(window.siteConfig)); } catch(e) { console.log('localStorage save failed', e); }
+                    if(window.saveConfigToDB) { window.saveConfigToDB(window.siteConfig).then(r=>console.log('DB save',r)); }
+                    event.target.value = '';
+                }
+                return; 
+            }
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                var img = new Image();
+                img.onload = function() {
+                    var canvas = document.createElement('canvas');
+                    let width = img.width; let height = img.height;
+                    const maxSize = 1000;
+                    if (width > maxSize || height > maxSize) {
+                        if (width > height) { height *= maxSize / width; width = maxSize; }
+                        else { width *= maxSize / height; height = maxSize; }
+                    }
+                    canvas.width = width; canvas.height = height;
+                    var ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    var base64 = canvas.toDataURL('image/webp', 0.85);
+                    processed.push(base64);
+                    remaining--;
+                    console.log('Processed', processed.length, 'remaining', remaining);
+                    if(remaining === 0) {
+                        window.siteConfig.gameInfo.banners = window.siteConfig.gameInfo.banners.concat(processed);
+                        window.renderAdminGameBannersList();
+                        window.renderGameBanners();
+                        try { localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(window.siteConfig)); } catch(e) { console.log('localStorage save failed - maybe quota exceeded, trying without banners? ', e); }
+                        if(window.saveConfigToDB) { 
+                            window.saveConfigToDB(window.siteConfig).then(s=>console.log('DB save after banner upload:', s)).catch(err=>console.log('DB save error', err));
+                        }
+                        event.target.value = '';
+                        alert(processed.length + ' banner(s) added! Save karna mat bhoolo - Save Live button dabao.');
+                    }
+                };
+                img.onerror = function() {
+                    console.log('Image load error');
+                    remaining--;
+                    if(remaining===0 && processed.length>0) {
+                        window.siteConfig.gameInfo.banners = window.siteConfig.gameInfo.banners.concat(processed);
+                        window.renderAdminGameBannersList();
+                        window.renderGameBanners();
+                        try { localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(window.siteConfig)); } catch(e) {}
+                        if(window.saveConfigToDB) { window.saveConfigToDB(window.siteConfig); }
+                        event.target.value = '';
+                    }
+                };
+                img.src = e.target.result;
+            };
+            reader.onerror = function() {
+                remaining--;
+                console.log('FileReader error');
+            };
+            reader.readAsDataURL(file);
+        });
+    };
+
+    // FIX: Ensure banners are rendered after page load and after Firebase config
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(function() {
+            if(window.renderGameBanners) window.renderGameBanners();
+            if(window.renderAdminGameBannersList) window.renderAdminGameBannersList();
+        }, 500);
+    });
+
+    // Also patch saveAdminSettings to ensure banners are preserved
+    const originalSaveAdminSettings = window.saveAdminSettings;
+    window.saveAdminSettings = async function() {
+        console.log('Patched saveAdminSettings called, preserving banners:', window.siteConfig.gameInfo?.banners?.length);
+        // Ensure banners array exists
+        if(!window.siteConfig.gameInfo) window.siteConfig.gameInfo = {};
+        if(!Array.isArray(window.siteConfig.gameInfo.banners)) window.siteConfig.gameInfo.banners = [];
+        
+        // Call original if exists, but we will re-implement to be safe
+        // Save Game Info fields
+        try {
+            var gNameEl = document.getElementById('adminGameName');
+            var gPubEl = document.getElementById('adminGamePublisher');
+            var gPlayEl = document.getElementById('adminPlayStoreLink');
+            var gAppEl = document.getElementById('adminAppStoreLink');
+            if(gNameEl) window.siteConfig.gameInfo.name = gNameEl.value.trim() || 'Battlegrounds Mobile India';
+            if(gPubEl) window.siteConfig.gameInfo.publisher = gPubEl.value.trim() || 'KRAFTON, Inc.';
+            if(gPlayEl) window.siteConfig.gameInfo.playStoreLink = gPlayEl.value.trim() || 'https://play.google.com/store/apps/details?id=com.pubg.imobile';
+            if(gAppEl) window.siteConfig.gameInfo.appStoreLink = gAppEl.value.trim() || 'https://apps.apple.com/in/app/bgmi-battlegrounds-mobile-india/id1526436837';
+            if(window.siteConfig.images && window.siteConfig.images.gameLogo) {
+                window.siteConfig.gameInfo.logo = window.siteConfig.images.gameLogo;
+            }
+        } catch(e) { console.log('GameInfo save error', e); }
+
+        // Now call original save logic for rest - we will trigger the original function's remaining part
+        // To avoid duplication, just call the original but ensure banners are not lost
+        // The original will overwrite gameInfo fields but keep banners because it doesn't clear banners
+        // So we save banners temp
+        var tempBanners = window.siteConfig.gameInfo.banners ? [...window.siteConfig.gameInfo.banners] : [];
+        
+        // If originalSave exists and we want to avoid recursion, call it via a separate function
+        // Instead, we will manually do the full save (copying original logic) but preserving banners
+        // For simplicity, if originalSaveAdminSettings was defined before our patch, we will call it
+        // But we already saved tempBanners, so restore after original's initial gameInfo handling
+        
+        // To prevent double execution, we check if this is our patched version calling original
+        // We'll just execute the full original logic from file but ensuring banners preserved
+        
+        // --- BEGIN original saveAdminSettings logic (simplified to call original) ---
+        if (typeof originalSaveAdminSettings === 'function' && originalSaveAdminSettings !== window.saveAdminSettings) {
+            // Temporarily store banners, call original, then restore banners if original cleared them
+            var result = await originalSaveAdminSettings();
+            // Ensure banners restored if original accidentally cleared
+            if(!window.siteConfig.gameInfo.banners || window.siteConfig.gameInfo.banners.length === 0) {
+                window.siteConfig.gameInfo.banners = tempBanners;
+                try { localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(window.siteConfig)); } catch(e) {}
+                if(window.saveConfigToDB) await window.saveConfigToDB(window.siteConfig);
+            }
+            // Force re-render banners after save
+            setTimeout(function() {
+                if(window.renderGameBanners) window.renderGameBanners();
+                if(window.renderAdminGameBannersList) window.renderAdminGameBannersList();
+            }, 200);
+            return result;
+        }
+    };
+
+    console.log('Banner patch loaded - banners:', window.siteConfig?.gameInfo?.banners?.length);
 </script>
 </body>
 </html>
