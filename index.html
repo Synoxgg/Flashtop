@@ -1226,9 +1226,11 @@
     #uidIcon, #regex-indicator { display: none !important; }
     #changeUidBtn { display: none !important; }
     #verify-result.verified-tap {
-      cursor: default !important;
+      cursor: pointer !important;
       position: relative;
-      pointer-events: none !important;
+    }
+    #verify-result.verified-tap:hover {
+      border-color: rgba(255,255,255,0.25) !important;
     }
     #uid[readonly] {
       cursor: pointer !important;
@@ -1373,6 +1375,12 @@
               <h4 style="color: #fff; font-size: 15px; margin-bottom: 8px;" id="dispHowToQ1">How do I find my BGMI User ID (UID)?</h4>
               <p style="color: var(--text-muted); font-size: 13px; line-height: 1.5; margin-bottom: 15px;" id="dispHowToA1">Open BGMI and enter the lobby. Tap on the profile picture and navigate to Basic Info. You will see a numeric User ID above the profile picture. Make sure to copy or enter the correct numbers before making the purchase, instead of using your in-game name.</p>
               <img src="uid-ss.webp" id="dispImgHowTo1" alt="UID Screenshot" style="width: 100%; border-radius: var(--radius-sm); border: 1px solid var(--surface-border); margin-bottom: 25px;">
+          </div>
+          
+          <div id="howToBlock2">
+              <h4 style="color: #fff; font-size: 15px; margin-bottom: 8px;" id="dispHowToQ2">How do I find my BGMI ID name (IGN)?</h4>
+              <p style="color: var(--text-muted); font-size: 13px; line-height: 1.5; margin-bottom: 10px;" id="dispHowToA2">Open BGMI and enter the lobby. Tap on the profile picture and navigate to Basic Info. You will see a BGMI ID name (IGN) above or beside the profile picture. Make sure to copy or enter the correct name before making the purchase.</p>
+              <img src="bgminame-ss.webp" id="dispImgHowTo2" alt="IGN Screenshot" style="width: 100%; border-radius: var(--radius-sm); border: 1px solid var(--surface-border); margin-bottom: 10px;">
           </div>
       </div>
     </div>
@@ -3323,8 +3331,8 @@
         document.getElementById('dispHowToRedeem').textContent = getText('howToRedeemTitle');
         document.getElementById('dispHowToQ1').textContent = getText('howToQ1');
         document.getElementById('dispHowToA1').textContent = getText('howToA1');
-        let elQ2 = document.getElementById('dispHowToQ2'); if(elQ2) elQ2.textContent = getText('howToQ2');
-        let elA2 = document.getElementById('dispHowToA2'); if(elA2) elA2.textContent = getText('howToA2');
+        document.getElementById('dispHowToQ2').textContent = getText('howToQ2');
+        document.getElementById('dispHowToA2').textContent = getText('howToA2');
         
         document.getElementById('dispStep2Title').textContent = getText('step2Title');
         document.getElementById('dispLblTrial').textContent = getText('lblTrial');
@@ -3395,7 +3403,7 @@
         
         document.getElementById('howToRedeemSection').style.display = getTgl('showHowToRedeem') ? 'block' : 'none';
         document.getElementById('howToBlock1').style.display = getTgl('showHowToQ1') ? 'block' : 'none';
-        let block2 = document.getElementById('howToBlock2'); if(block2) block2.style.display = getTgl('showHowToQ2') ? 'block' : 'none';
+        document.getElementById('howToBlock2').style.display = getTgl('showHowToQ2') ? 'block' : 'none';
 
         document.getElementById('dispStep2Title').style.display = getTgl('showStep2Title') ? 'block' : 'none';
         document.getElementById('trialPackTitleWrap').style.display = getTgl('showLblTrial') ? 'flex' : 'none';
@@ -3686,8 +3694,8 @@
         document.getElementById('adminTextHowToRedeem').value = t.howToRedeemTitle;
         document.getElementById('adminTextHowToQ1').value = t.howToQ1;
         document.getElementById('adminTextHowToA1').value = t.howToA1;
-        let admQ2 = document.getElementById('adminTextHowToQ2'); if(admQ2) admQ2.value = t.howToQ2;
-        let admA2 = document.getElementById('adminTextHowToA2'); if(admA2) admA2.value = t.howToA2;
+        document.getElementById('adminTextHowToQ2').value = t.howToQ2;
+        document.getElementById('adminTextHowToA2').value = t.howToA2;
 
         document.getElementById('adminTextStep2').value = t.step2Title; 
         document.getElementById('adminTextLblTrial').value = t.lblTrial;
@@ -3768,7 +3776,7 @@
         
         document.getElementById('tgl_howToRedeem').checked = tg.showHowToRedeem; 
         document.getElementById('tgl_howToQ1').checked = tg.showHowToQ1 !== false;
-        let tglQ2 = document.getElementById('tgl_howToQ2'); if(tglQ2) tglQ2.checked = tg.showHowToQ2 !== false;
+        document.getElementById('tgl_howToQ2').checked = tg.showHowToQ2 !== false;
 
         document.getElementById('tgl_step2Title').checked = tg.showStep2Title; 
         document.getElementById('tgl_lblTrial').checked = tg.showLblTrial !== false;
@@ -4128,8 +4136,8 @@
         t.howToRedeemTitle = document.getElementById('adminTextHowToRedeem').value.trim() || defaultAdminConfig.texts.howToRedeemTitle;
         t.howToQ1 = document.getElementById('adminTextHowToQ1').value.trim() || defaultAdminConfig.texts.howToQ1;
         t.howToA1 = document.getElementById('adminTextHowToA1').value.trim() || defaultAdminConfig.texts.howToA1;
-        let admQ2c = document.getElementById('adminTextHowToQ2'); if(admQ2c) t.howToQ2 = admQ2c.value.trim() || defaultAdminConfig.texts.howToQ2;
-        let admA2c = document.getElementById('adminTextHowToA2'); if(admA2c) t.howToA2 = admA2c.value.trim() || defaultAdminConfig.texts.howToA2;
+        t.howToQ2 = document.getElementById('adminTextHowToQ2').value.trim() || defaultAdminConfig.texts.howToQ2;
+        t.howToA2 = document.getElementById('adminTextHowToA2').value.trim() || defaultAdminConfig.texts.howToA2;
 
         t.step2Title = document.getElementById('adminTextStep2').value.trim() || defaultAdminConfig.texts.step2Title;
         t.lblTrial = document.getElementById('adminTextLblTrial').value.trim() || defaultAdminConfig.texts.lblTrial;
@@ -4213,7 +4221,7 @@
         tg.showGrpIgn = document.getElementById('tgl_grpIgn').checked;
         tg.showHowToRedeem = document.getElementById('tgl_howToRedeem').checked;
         tg.showHowToQ1 = document.getElementById('tgl_howToQ1').checked;
-        let tglQ2b = document.getElementById('tgl_howToQ2'); if(tglQ2b) tg.showHowToQ2 = tglQ2b.checked;
+        tg.showHowToQ2 = document.getElementById('tgl_howToQ2').checked;
 
         tg.showStep2Title = document.getElementById('tgl_step2Title').checked;
         tg.showLblTrial = document.getElementById('tgl_lblTrial').checked;
@@ -4904,14 +4912,12 @@
             verifyBtn.style.color = '#000';
         }
         showVerifyResult('success', playerName);
-        // UID is tappable to edit, but BGMI ID Name tile should NOT be clickable
+        // --- NEW: Make UID tappable to edit (instead of Change button) ---
         setTimeout(() => {
             const vr = document.getElementById('verify-result');
             if (vr) {
-                vr.classList.remove('verified-tap');
-                vr.style.cursor = 'default';
-                vr.style.pointerEvents = 'none'; // make tile non-clickable
-                vr.title = '';
+                vr.classList.add('verified-tap');
+                vr.style.cursor = 'pointer';
             }
             if (uidInput) {
                 uidInput.style.cursor = 'pointer';
@@ -4959,7 +4965,6 @@
         if (vr2) {
             vr2.classList.remove('verified-tap');
             vr2.style.cursor = 'default';
-            vr2.style.pointerEvents = 'auto';
             vr2.title = '';
         }
         if (verifyBtn) {
@@ -4996,7 +5001,6 @@
         if (vr2) {
             vr2.classList.remove('verified-tap');
             vr2.style.cursor = 'default';
-            vr2.style.pointerEvents = 'auto';
             vr2.title = '';
         }
         if (verifyBtn) {
@@ -5127,7 +5131,14 @@
         });
     }
 
-    // --- NEW: Only UID input tap to edit - BGMI ID Name tile is NOT clickable ---
+    // --- NEW: Tap on verified UID / result to edit ---
+    if (verifyResult) {
+        verifyResult.addEventListener('click', () => {
+            if (isUidVerified) {
+                enterUidEditMode();
+            }
+        });
+    }
     if (uidInput) {
         uidInput.addEventListener('click', () => {
             if (isUidVerified && uidInput.readOnly) {
@@ -5206,30 +5217,12 @@
         btn.innerHTML = originalText; btn.disabled = false; showStep(2);
     };
 
-    document.getElementById('backToDetails').onclick = () => {
-        if (typeof autoProceedTimeout !== "undefined" && autoProceedTimeout) { clearTimeout(autoProceedTimeout); autoProceedTimeout = null; }
-        // Reset UID flow so Verify button shows instead of Continue when returning to step1
-        if (typeof resetVerification === 'function') resetVerification();
-        const uidEl = document.getElementById('uid');
-        if (uidEl) { uidEl.value = ''; uidEl.readOnly = false; uidEl.style.cursor = 'text'; }
-        const changeBtnSelf = document.getElementById('changeUidBtn');
-        if (changeBtnSelf) changeBtnSelf.style.display = 'none';
-        if (typeof checkRegex === 'function') checkRegex('');
-        history.back();
-    };
+    document.getElementById('backToDetails').onclick = () => history.back();
     
     document.getElementById('backToDetailsStep3').onclick = () => {
         if(qrTimer) clearInterval(qrTimer);
         if(paymentVerificationInterval) clearInterval(paymentVerificationInterval);
         if(typeof window.releaseLock === 'function') { window.releaseLock(exactPriceStr); }
-        if (typeof autoProceedTimeout !== "undefined" && autoProceedTimeout) { clearTimeout(autoProceedTimeout); autoProceedTimeout = null; }
-        // Also reset UID flow for step3 -> step1 change
-        if (typeof resetVerification === 'function') resetVerification();
-        const uidEl3 = document.getElementById('uid');
-        if (uidEl3) { uidEl3.value = ''; uidEl3.readOnly = false; uidEl3.style.cursor = 'text'; }
-        const changeBtnSelf3 = document.getElementById('changeUidBtn');
-        if (changeBtnSelf3) changeBtnSelf3.style.display = 'none';
-        if (typeof checkRegex === 'function') checkRegex('');
         history.go(-2); 
     };
 
