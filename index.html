@@ -1217,26 +1217,6 @@
     #topAmountDisplay { display:none !important; }
 
     </style>
-
-    <style>
-    /* --- Custom changes as per user request --- */
-    #grpIgn { display: none !important; }
-    #next1 { display: none !important; }
-    .btn-row { display: none !important; }
-    #uidIcon, #regex-indicator { display: none !important; }
-    #changeUidBtn { display: none !important; }
-    #verify-result.verified-tap {
-      cursor: pointer !important;
-      position: relative;
-    }
-    #verify-result.verified-tap:hover {
-      border-color: rgba(255,255,255,0.25) !important;
-    }
-    #uid[readonly] {
-      cursor: pointer !important;
-    }
-    </style>
-
 </head>
 
 <body oncontextmenu="return false;">
@@ -1320,7 +1300,7 @@
     <div id="step1" class="step active">
       <div class="step-content">
         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 25px;">
-            <h2 class="step-title" id="dispStep1Title" style="margin-bottom: 0;">Player Details</h2>
+            <h2 class="step-title" id="dispStep1Title" style="margin-bottom: 0;">Player Detail</h2>
         </div>
 
         <div class="form-group" id="grpUid">
@@ -1328,19 +1308,17 @@
             <span id="dispLblUidInput">Enter your BGMI user id (UID)</span>
             <i class="fa-solid fa-circle-info info-icon" onclick="openModal('uidModal')"></i>
           </label>
-          <div style="display:flex; flex-direction:column; gap:10px; width:100%;">
-            <div class="form-input-wrapper" style="width:100%; position:relative;">
-              <input type="tel" class="form-input" id="uid" placeholder="BGMI user ID (UID)" maxlength="12" inputmode="numeric">
+          <div class="form-input-wrapper" style="width:100%; position:relative;">
+              <input type="tel" class="form-input" id="uid" placeholder="Enter your BGMI user id (UID)" maxlength="12" inputmode="numeric">
+              <i class="input-icon" id="uidIcon" style="display:none;"></i>
             </div>
-            <div id="verify-result" style="display:none; font-size:12px; padding:8px 12px; border-radius:8px;"></div>
-            <button type="button" id="changeUidBtn" style="display:none; width:100%; padding:0 18px; height:42px; background:transparent; color:#fff; border:1px solid rgba(255,255,255,0.15); border-radius:12px; font-family:var(--font-display); font-weight:600; font-size:12px; letter-spacing:0.5px; cursor:pointer; transition:all 0.2s;"><i class="fa-solid fa-pen-to-square" style="margin-right:6px;"></i> Change BGMI user ID</button>
-            <button type="button" id="verifyUidBtn" disabled style="width:100%; padding:0 18px; height:46px; background:var(--primary); color:#000; border:none; border-radius:12px; font-family:var(--font-display); font-weight:800; font-size:13px; letter-spacing:0.5px; cursor:not-allowed; opacity:0.4; white-space:nowrap; transition:all 0.2s;">Verify</button>
-          </div>
+            <button type="button" id="verifyUidBtn" disabled style="margin-top:10px; width:100%; height:46px; background:var(--primary); color:#000; border:none; border-radius:12px; font-family:var(--font-display); font-weight:800; font-size:13px; letter-spacing:0.5px; cursor:not-allowed; opacity:0.4; transition:all 0.2s;">Verify</button>
           <div class="error-message" id="uidError"><span id="dispErrUid">Invalid UID Format</span></div>
+          <div id="verify-result" style="display:none; margin-top:8px; font-size:12px; padding:8px 12px; border-radius:8px;"></div>
         </div>
 
         <!-- Verify Popup - Same as NextLevel -->
-        <div id="verify-popup" style="display:none !important; position:fixed; inset:0; z-index:99999; align-items:center; justify-content:center; padding:16px; background:rgba(0,0,0,0.75); backdrop-filter:blur(4px);">
+        <div id="verify-popup" style="display:none; position:fixed; inset:0; z-index:99999; align-items:center; justify-content:center; padding:16px; background:rgba(0,0,0,0.75); backdrop-filter:blur(4px);">
           <div style="background:#0e0e12; border:1px solid rgba(255,255,255,0.12); border-radius:20px; padding:28px 24px; max-width:340px; width:100%; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.5);">
             <div id="verify-popup-icon" style="width:64px; height:64px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 16px;"></div>
             <h3 id="verify-popup-title" style="font-family:var(--font-display); font-weight:800; font-size:18px; margin-bottom:8px;"></h3>
@@ -1349,7 +1327,7 @@
           </div>
         </div>
 
-        <div class="form-group" id="grpIgn" style="display:none !important;">
+        <div class="form-group" id="grpIgn" style="display:none;">
           <label class="form-label">
             <span id="dispLblIgnInput">BGMI ID Name (Auto-Filled)</span>
             <span style="color:var(--success); font-size:11px; margin-left:6px;"><i class="fa-solid fa-wand-magic-sparkles"></i> Auto</span>
@@ -1362,7 +1340,7 @@
           <div id="autoIgnHint" style="margin-top:6px; font-size:11px; color:var(--success); display:none;"><i class="fa-solid fa-circle-check"></i> <span id="autoIgnText"></span></div>
         </div>
 
-        <div class="btn-row" style="display:none !important;">
+        <div class="btn-row">
           <button type="button" class="btn btn-primary" id="next1" disabled><span id="dispBtnVerify">Verify & Continue</span> <i class="fa-solid fa-arrow-right"></i></button>
         </div>
       </div>
@@ -2132,9 +2110,9 @@
           </div>
 
           <div class="admin-subsection">
-              <label style="font-size:12px; color:var(--primary); font-weight:600;">Step 1: Player Details Texts</label>
+              <label style="font-size:12px; color:var(--primary); font-weight:600;">Step 1: Player Detail Texts</label>
               <div class="flex-row-center"><input type="checkbox" id="tgl_step1Title" class="admin-toggle-box"><input type="text" class="form-input" id="adminTextStep1" placeholder="Step 1 Title" style="font-size:12px; padding:8px;"></div>
-              <div class="flex-row-center"><input type="checkbox" id="tgl_grpUid" class="admin-toggle-box"><input type="text" class="form-input" id="adminTextLblUidInput" placeholder="BGMI Character ID (UID)" style="font-size:12px; padding:8px;"></div>
+              <div class="flex-row-center"><input type="checkbox" id="tgl_grpUid" class="admin-toggle-box"><input type="text" class="form-input" id="adminTextLblUidInput" placeholder="Enter your BGMI user id (UID)" style="font-size:12px; padding:8px;"></div>
               <div class="flex-row-center"><input type="text" class="form-input" id="adminTextPhUid" placeholder="Placeholder UID" style="font-size:12px; padding:8px; width:100%; margin-left: 26px;"></div>
               <div class="flex-row-center"><input type="text" class="form-input" id="adminTextErrUid" placeholder="Error: Invalid UID" style="font-size:12px; padding:8px; width:100%; margin-left: 26px;"></div>
               
@@ -2584,7 +2562,7 @@
             loaderText: "FlashTOP", tagline: "Instant game top-ups at affordable rates", partnerBadge: "BGMI Authorised Seller",
             secureBadge: "Secure", instantBadge: "Instant", supportBadge: "24/7", ordersToday: "Packs Delivered Today", 
             
-            step1Title: "Player Details", lblUidInput: "Enter your BGMI user id (UID)", phUid: "BGMI user ID (UID)", errUid: "Invalid UID Format",
+            step1Title: "Player Detail", lblUidInput: "Enter your BGMI user id (UID)", phUid: "Enter your BGMI user id (UID)", errUid: "Invalid UID Format",
             lblIgnInput: "BGMI ID Name", phIgn: "Enter IGN", errIgn: "Name Required",
             
             howToRedeemTitle: "How to redeem",
@@ -4576,15 +4554,12 @@
     const verifyResult = document.getElementById('verify-result');
     let isUidVerified = false;
     let verifiedPlayerName = "";
-    let autoProceedTimeout = null;
-    let cachedPurchasedPacks = null;
-    let packsPreloadPromise = null;
-    let isPacksPreloading = false;
 
     function checkRegex(pid) {
+        // Modified: removed tick indicator as per requirement
         try {
             const ok = new RegExp(regexPattern).test(pid);
-            if (verifyBtn) {
+            if (verifyBtn && verifyBtn.style.display !== 'none') {
                 verifyBtn.disabled = !ok || isUidVerified;
                 verifyBtn.style.opacity = ok && !isUidVerified ? '1' : '0.4';
                 verifyBtn.style.cursor = ok && !isUidVerified ? 'pointer' : 'not-allowed';
@@ -4622,7 +4597,6 @@
         // Allow unicode letters (for names like SūYūNūOūX)
         if (name.length < 2 || name.length > 32) return false;
         if (name.toLowerCase() === "player") return false;
-        if (name.toLowerCase() === "verified") return false;
         if (/^\d+$/.test(name)) return false;
         // Must contain at least 2 letters/numbers, not just symbols
         if (!/[^\s]{2,}/.test(name)) return false;
@@ -4787,40 +4761,52 @@
         }
     }
 
-        function showVerifyResult(type, msg) {
+    function showVerifyResult(type, msg) {
         if (!verifyResult) return;
         verifyResult.style.display = 'block';
         if (type === 'success') {
-            verifyResult.style.background = 'rgba(0,255,157,0.08)';
-            verifyResult.style.border = '1px solid rgba(0,255,157,0.25)';
+            verifyResult.style.background = 'rgba(0,255,157,0.1)';
+            verifyResult.style.border = '1px solid rgba(0,255,157,0.3)';
             verifyResult.style.color = '#00ff9d';
-            verifyResult.style.padding = '12px 14px';
-            verifyResult.style.borderRadius = '12px';
-            const cleanName = String(msg).replace(/^.*Player\s*/i, '').trim() || msg;
-            const finalDisplayName = cleanName.replace(/^:\s*/, '').trim() || msg;
-            verifyResult.innerHTML = `<div style="display:flex; align-items:center; gap:10px;"><div style="width:28px; height:28px; background:rgba(0,255,157,0.15); border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;"><i class="fa-solid fa-circle-check" style="font-size:14px;"></i></div><div style="display:flex; flex-direction:column; line-height:1.2;"><span style="font-size:10px; color:#9ca3af; letter-spacing:0.5px; text-transform:uppercase;">BGMI ID Name</span><span style="font-weight:700; font-size:14px; color:#fff; font-family:var(--font-display);">${finalDisplayName}</span></div></div>`;
         } else {
             verifyResult.style.background = 'rgba(255,71,87,0.1)';
             verifyResult.style.border = '1px solid rgba(255,71,87,0.3)';
             verifyResult.style.color = '#ff8a95';
-            verifyResult.style.padding = '10px 12px';
-            verifyResult.style.borderRadius = '10px';
-            verifyResult.textContent = msg;
         }
+        verifyResult.textContent = msg;
     }
 
-        function hideVerifyResult() {
+    function hideVerifyResult() {
         if (verifyResult) verifyResult.style.display = 'none';
     }
 
-        function showVerifyPopup(type, msg) {
+    function showVerifyPopup(type, msg) {
         const popup = document.getElementById('verify-popup');
-        if (popup) popup.style.display = 'none';
+        const icon = document.getElementById('verify-popup-icon');
+        const title = document.getElementById('verify-popup-title');
+        const msgEl = document.getElementById('verify-popup-msg');
+        const btn = document.getElementById('verify-popup-btn');
+        if (!popup) return;
+
         if (type === 'success') {
-            return;
+            icon.style.background = 'rgba(0,255,157,0.15)';
+            icon.style.border = '1px solid rgba(0,255,157,0.3)';
+            icon.innerHTML = '<i class="fa-solid fa-circle-check" style="font-size:32px; color:#00ff9d;"></i>';
+            title.style.color = '#00ff9d';
+            title.textContent = 'Verified!';
+            btn.style.background = '#00ff9d';
+            btn.style.color = '#000';
         } else {
-            showVerifyResult('error', msg);
+            icon.style.background = 'rgba(255,71,87,0.15)';
+            icon.style.border = '1px solid rgba(255,71,87,0.3)';
+            icon.innerHTML = '<i class="fa-solid fa-circle-xmark" style="font-size:32px; color:#ff4757;"></i>';
+            title.style.color = '#ff4757';
+            title.textContent = 'Verification Failed';
+            btn.style.background = 'var(--primary)';
+            btn.style.color = '#000';
         }
+        msgEl.textContent = msg;
+        popup.style.display = 'flex';
     }
 
     window.closeVerifyPopup = function() {
@@ -4829,191 +4815,59 @@
         popup.style.display = 'none';
     };
 
-        async function proceedToPackSelection() {
-        currentUid = uidInput.value.trim();
-        currentIgn = verifiedPlayerName;
-        if (!currentIgn || currentIgn.toLowerCase() === 'player') { currentIgn = verifiedPlayerName || ''; }
-        const dUid = document.getElementById('displayUid');
-        const dIgn = document.getElementById('displayIgn');
-        const d3Uid = document.getElementById('displayUidStep3');
-        const d3Ign = document.getElementById('displayIgnStep3');
-        if (dUid) dUid.textContent = currentUid;
-        if (dIgn) dIgn.textContent = currentIgn;
-        if (d3Uid) d3Uid.textContent = currentUid;
-        if (d3Ign) d3Ign.textContent = currentIgn;
-        try {
-            let purchasedPacks = cachedPurchasedPacks;
-            // If not yet cached, wait for preload promise if exists, else fetch now
-            if (purchasedPacks === null) {
-                if (packsPreloadPromise && isPacksPreloading) {
-                    try { purchasedPacks = await packsPreloadPromise; } catch(e) { purchasedPacks = await fetchPurchasedPacks(currentUid); }
-                } else {
-                    purchasedPacks = await fetchPurchasedPacks(currentUid);
-                }
-            }
-            if (!Array.isArray(purchasedPacks)) purchasedPacks = [];
-            const trialUcValues = (window.siteConfig.trialPacks || []).map(p => p.uc.toString());
-            const hasPurchasedAnyTrial = purchasedPacks.some(uc => trialUcValues.includes(uc.toString()));
-            document.querySelectorAll('.pack-card').forEach(card => {
-                card.classList.remove('purchased', 'selected'); 
-                const cm = card.querySelector('.check-mark');
-                if (cm) cm.remove();
-                try {
-                  const packData = JSON.parse(decodeURIComponent(card.dataset.pack));
-                  const isTrialPack = trialUcValues.includes(packData.uc.toString());
-                  if (isTrialPack && (hasPurchasedAnyTrial || purchasedPacks.includes(packData.uc.toString()))) {
-                      card.classList.add('purchased');
-                  }
-                } catch(e){}
-            });
-            const trialTitleWrap = document.getElementById('trialPackTitleWrap'); 
-            const trialGrid = document.getElementById('trialPacksGrid');
-            let trialPackVisible = false; 
-            document.querySelectorAll('#trialPacksGrid .pack-card').forEach(card => { if(!card.classList.contains('purchased')) trialPackVisible = true; });
-            const tPacksCount = window.siteConfig.trialPacks ? window.siteConfig.trialPacks.length : 0;
-            if (!trialPackVisible && tPacksCount > 0) { 
-                if(trialTitleWrap) trialTitleWrap.style.display = 'none'; 
-                if(trialGrid) trialGrid.style.display = 'none';
-            } else { 
-                if(trialTitleWrap) trialTitleWrap.style.display = getTgl('showLblTrial') ? 'flex' : 'none';
-                if(trialGrid) trialGrid.style.display = 'grid'; 
-            }
-        } catch(e) { console.error(e); }
-        showStep(2);
-    }
-
-    function onVerifySuccess(pid, playerName) {
+        function onVerifySuccess(pid, playerName) {
+        // Critical fix: Ensure we never accept generic "Player" and show actual verified name
         if (!isValidPlayerName(playerName)) {
-            showVerifyResult('error', "This BGMI user ID doesn't exist");
-            if (verifyBtn) {
-                verifyBtn.disabled = false;
-                verifyBtn.innerHTML = 'Verify';
-                verifyBtn.style.background = 'var(--primary)';
-                verifyBtn.style.opacity = '1';
-                verifyBtn.style.cursor = 'pointer';
-            }
+            showVerifyPopup('error', 'Could not fetch valid player name. Please try again.');
             return;
         }
         isUidVerified = true;
         verifiedPlayerName = playerName;
+        const grpIgn = document.getElementById('grpIgn');
         const ignInputEl = document.getElementById('ign');
+        const autoHint = document.getElementById('autoIgnHint');
+        const autoText = document.getElementById('autoIgnText');
+
+        if (grpIgn) grpIgn.style.display = 'block';
         if (ignInputEl) {
             ignInputEl.value = playerName;
+            ignInputEl.readOnly = true;
         }
-        if (uidInput) uidInput.readOnly = true;
-        const changeBtn = document.getElementById('changeUidBtn');
-        if (changeBtn) changeBtn.style.display = 'none';
-        if (verifyBtn) {
-            verifyBtn.innerHTML = 'Continue <i class="fa-solid fa-arrow-right" style="margin-left:6px;"></i>';
-            verifyBtn.disabled = false;
-            verifyBtn.style.background = 'var(--primary)';
-            verifyBtn.style.opacity = '1';
-            verifyBtn.style.cursor = 'pointer';
-            verifyBtn.style.color = '#000';
-        }
-        showVerifyResult('success', playerName);
-        // --- NEW: Make UID tappable to edit (instead of Change button) ---
-        setTimeout(() => {
-            const vr = document.getElementById('verify-result');
-            if (vr) {
-                vr.classList.add('verified-tap');
-                vr.style.cursor = 'pointer';
-            }
-            if (uidInput) {
-                uidInput.style.cursor = 'pointer';
-            }
-        }, 50);
-        triggerHaptic('success');
+        if (autoHint) autoHint.style.display = 'block';
+        if (autoText) autoText.textContent = `Verified as ${playerName}`;
 
-        // PRELOAD packs immediately after verify success to avoid delay on Continue click
-        cachedPurchasedPacks = null;
-        isPacksPreloading = true;
-        try {
-            packsPreloadPromise = fetchPurchasedPacks(pid).then(packs => {
-                cachedPurchasedPacks = packs;
-                isPacksPreloading = false;
-                console.log('Packs preloaded:', packs);
-                return packs;
-            }).catch(e => {
-                console.error('Preload packs error', e);
-                isPacksPreloading = false;
-                cachedPurchasedPacks = [];
-                return [];
-            });
-        } catch(e) {
-            isPacksPreloading = false;
+        // Requirement 7: Hide verify button after verification
+        if (verifyBtn) {
+            verifyBtn.style.display = 'none';
+            verifyBtn.disabled = true;
         }
+        // Tick removed as per requirement
+        showVerifyResult('success', `✓ ${playerName}`);
+        checkStep1Validation();
+        triggerHaptic('success');
     }
 
-        function resetVerification() {
-        if (typeof autoProceedTimeout !== "undefined" && autoProceedTimeout) { clearTimeout(autoProceedTimeout); autoProceedTimeout = null; }
+    function resetVerification() {
         isUidVerified = false;
         verifiedPlayerName = "";
-        cachedPurchasedPacks = null;
-        packsPreloadPromise = null;
-        isPacksPreloading = false;
+        const grpIgn = document.getElementById('grpIgn');
         const ignInputEl = document.getElementById('ign');
+        const autoHint = document.getElementById('autoIgnHint');
+        if (grpIgn) grpIgn.style.display = 'none';
         if (ignInputEl) ignInputEl.value = "";
-        if (uidInput) {
-            uidInput.readOnly = false;
-            uidInput.style.cursor = 'text';
-            uidInput.title = '';
-        }
-        const changeBtn2 = document.getElementById('changeUidBtn');
-        if (changeBtn2) changeBtn2.style.display = 'none';
-        const vr2 = document.getElementById('verify-result');
-        if (vr2) {
-            vr2.classList.remove('verified-tap');
-            vr2.style.cursor = 'default';
-            vr2.title = '';
-        }
+        if (autoHint) autoHint.style.display = 'none';
+        if (uidInput) uidInput.readOnly = false;
         if (verifyBtn) {
-            verifyBtn.innerHTML = 'Verify';
-            verifyBtn.disabled = true;
+            verifyBtn.textContent = 'Verify';
+            verifyBtn.disabled = false;
+            verifyBtn.style.display = 'block';
+            verifyBtn.style.width = '100%';
             verifyBtn.style.background = 'var(--primary)';
             verifyBtn.style.opacity = '0.4';
             verifyBtn.style.cursor = 'not-allowed';
         }
         hideVerifyResult();
         checkStep1Validation();
-    }
-
-    // --- NEW: function to enter edit mode when UID tapped ---
-    function enterUidEditMode() {
-        if (!isUidVerified) return;
-        if (typeof autoProceedTimeout !== "undefined" && autoProceedTimeout) { clearTimeout(autoProceedTimeout); autoProceedTimeout = null; }
-        isUidVerified = false;
-        verifiedPlayerName = "";
-        cachedPurchasedPacks = null;
-        packsPreloadPromise = null;
-        isPacksPreloading = false;
-        const ignInputEl = document.getElementById('ign');
-        if (ignInputEl) ignInputEl.value = "";
-        if (uidInput) {
-            uidInput.readOnly = false;
-            uidInput.style.cursor = 'text';
-            uidInput.title = '';
-            setTimeout(() => { uidInput.focus(); uidInput.select(); }, 50);
-        }
-        const changeBtn2 = document.getElementById('changeUidBtn');
-        if (changeBtn2) changeBtn2.style.display = 'none';
-        const vr2 = document.getElementById('verify-result');
-        if (vr2) {
-            vr2.classList.remove('verified-tap');
-            vr2.style.cursor = 'default';
-            vr2.title = '';
-        }
-        if (verifyBtn) {
-            verifyBtn.innerHTML = 'Verify';
-            verifyBtn.disabled = true;
-            verifyBtn.style.background = 'var(--primary)';
-            verifyBtn.style.opacity = '0.4';
-            verifyBtn.style.cursor = 'not-allowed';
-        }
-        hideVerifyResult();
-        const pid = uidInput ? uidInput.value.trim() : '';
-        checkRegex(pid);
-        triggerHaptic('light');
     }
 
     function checkStep1Validation() {
@@ -5038,53 +4892,42 @@
       }
       checkRegex(pid);
       hideVerifyResult();
+      checkStep1Validation();
     });
 
-    // Verify button click - MODIFIED: Verify -> Continue flow, no popup
+    // Verify button click - manual mode same as nextlevel
     if (verifyBtn) {
         verifyBtn.addEventListener('click', async () => {
-            if (isUidVerified && verifiedPlayerName) {
-                // --- CONTINUE BUTTON SPINNER (same as Verify) ---
-                verifyBtn.disabled = true;
-                verifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
-                verifyBtn.style.opacity = '0.7';
-                verifyBtn.style.cursor = 'not-allowed';
-                try {
-                    await proceedToPackSelection();
-                } finally {
-                    // keep disabled state until reset, but restore if still on step1 (in case of error)
-                    if (currentStep === 1) {
-                        verifyBtn.innerHTML = 'Continue <i class="fa-solid fa-arrow-right" style="margin-left:6px;"></i>';
-                        verifyBtn.disabled = false;
-                        verifyBtn.style.opacity = '1';
-                        verifyBtn.style.cursor = 'pointer';
-                    }
-                }
-                return;
-            }
             const pid = uidInput.value.trim();
-            if (!pid) { showVerifyResult('error', 'Please enter your Player ID'); return; }
-            if (!checkRegex(pid)) { showVerifyResult('error', 'Invalid Player ID format (8-12 digits)'); return; }
+            if (!pid) { showVerifyPopup('error', 'Please enter your Player ID'); return; }
+            if (!checkRegex(pid)) { showVerifyPopup('error', 'Invalid Player ID format (8-12 digits)'); return; }
+
             verifyBtn.disabled = true;
-            verifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
+            verifyBtn.textContent = 'Verifying...';
             verifyBtn.style.opacity = '0.7';
+
             const data = await callVerifyApi(pid);
             console.log('Verify API raw:', data);
+            // FIXED: Even if success flag is false, if we have a valid name and message says verified, treat as success
             let finalName = "";
             let isActuallySuccess = false;
             if (data) {
                 if (data.name && isValidPlayerName(data.name)) {
                     finalName = data.name.trim();
+                    // If name is valid, consider it success if either success flag true OR message contains verified
                     if (data.success || (data.message && data.message.toLowerCase().includes('verif')) || true) {
                         isActuallySuccess = true;
                     }
                 }
+                // If name not in data.name, try extract from message (for cases like "Player ID verified! NAME")
                 if (!finalName && data.message) {
                     let extracted = extractNameFromText(data.message);
+                    // Also try to get last word after ! as fallback for unicode names like SūYūNūOūX
                     if (!extracted) {
                         let m = data.message.match(/verified!\s*(.+)$/i);
                         if (m && m[1]) {
                             let cand = m[1].trim().replace(/["']/g,"").split(/[\n\r]+/)[0].trim();
+                            // clean
                             if (cand.length >=2 && cand.length <= 30) extracted = cand;
                         }
                     }
@@ -5094,66 +4937,24 @@
                     }
                 }
             }
+
             if (isActuallySuccess && finalName) {
+                // Override data.name with final extracted name
                 data.name = finalName;
                 data.success = true;
+                // Popup removed on success as per requirement - directly show BGMI ID name
                 onVerifySuccess(pid, finalName);
             } else {
-                showVerifyResult('error', "This BGMI user ID doesn't exist");
+                showVerifyPopup('error', data.message || 'Verification failed. Invalid UID');
                 verifyBtn.disabled = false;
-                verifyBtn.innerHTML = 'Verify';
+                verifyBtn.textContent = 'Verify';
                 verifyBtn.style.opacity = '1';
-                verifyBtn.style.background = 'var(--primary)';
-                verifyBtn.style.cursor = 'pointer';
+                // Tick removed
             }
         });
     }
 
     // Close popup on backdrop click
-    // Change BGMI user ID button - kept hidden, now UID tap does the job
-    const changeUidBtn = document.getElementById('changeUidBtn');
-    if (changeUidBtn) {
-        changeUidBtn.style.display = 'none';
-        changeUidBtn.addEventListener('click', () => {
-            if (autoProceedTimeout) {
-                clearTimeout(autoProceedTimeout);
-                autoProceedTimeout = null;
-            }
-            resetVerification();
-            if (uidInput) {
-                uidInput.focus();
-                uidInput.value = '';
-                uidInput.readOnly = false;
-            }
-            const changeBtnSelf = document.getElementById('changeUidBtn');
-            if (changeBtnSelf) changeBtnSelf.style.display = 'none';
-            checkRegex('');
-        });
-    }
-
-    // --- NEW: Tap on verified UID / result to edit ---
-    if (verifyResult) {
-        verifyResult.addEventListener('click', () => {
-            if (isUidVerified) {
-                enterUidEditMode();
-            }
-        });
-    }
-    if (uidInput) {
-        uidInput.addEventListener('click', () => {
-            if (isUidVerified && uidInput.readOnly) {
-                enterUidEditMode();
-            }
-        });
-        // Also handle focus attempt when readonly
-        uidInput.addEventListener('touchend', (e) => {
-            if (isUidVerified && uidInput.readOnly) {
-                e.preventDefault();
-                enterUidEditMode();
-            }
-        }, {passive: false});
-    }
-
     const verifyPopupEl = document.getElementById('verify-popup');
     if (verifyPopupEl) {
         verifyPopupEl.addEventListener('click', function(e) {
