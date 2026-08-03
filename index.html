@@ -784,22 +784,7 @@
       overflow: hidden;
       box-shadow: 0 0 0 1px rgba(255,184,0,0.08) inset, 0 10px 30px rgba(0,0,0,0.3);
     }
-    .payment-waiting-loader.active { display: block; position: sticky; bottom: 20px; z-index: 20; }
-    .payment-waiting-loader.is-fixed {
-      position: fixed !important;
-      bottom: 18px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: calc(100% - 28px);
-      max-width: 440px;
-      margin: 0;
-      z-index: 999;
-      box-shadow: 0 18px 50px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,184,0,0.18) inset, 0 0 30px rgba(255,184,0,0.12);
-      animation: pwlSlideUp 0.3s ease;
-    }
-    @keyframes pwlSlideUp { from { transform: translateX(-50%) translateY(20px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
-    .pwl-sentinel { height: 1px; width: 100%; pointer-events: none; }
-
+    .payment-waiting-loader.active { display: block; }
     .payment-waiting-loader::before {
       content: '';
       position: absolute;
@@ -1320,7 +1305,14 @@
     #verificationStatus { display:none !important; }
     #topAmountDisplay { display:none !important; }
 
-    </style>
+    
+    #verify-result { display:none; font-size:12px; border-radius:12px; margin-top:2px; }
+    #verifyUidBtn { width:100%; padding:0 18px; height:46px; background:var(--primary); color:#000; border:none; border-radius:12px; font-family:var(--font-display); font-weight:800; font-size:13px; letter-spacing:0.5px; cursor:not-allowed; opacity:0.4; white-space:nowrap; transition:all 0.2s; }
+    #verifyUidBtn:enabled { cursor:pointer; opacity:1; }
+    #changeUidBtn { display:none; width:100%; padding:0 18px; height:42px; background:transparent; color:#fff; border:1px solid rgba(255,255,255,0.15); border-radius:12px; font-family:var(--font-display); font-weight:600; font-size:12px; cursor:pointer; }
+    .success-tile { display:flex; align-items:center; gap:10px; }
+    
+</style>
 </head>
 
 <body oncontextmenu="return false;">
@@ -1409,29 +1401,44 @@
 
         <div class="form-group" id="grpUid">
           <label class="form-label">
-            <span id="dispLblUidInput">BGMI Character ID (UID)</span>
+            <span id="dispLblUidInput">Enter your BGMI user id (UID)</span>
             <i class="fa-solid fa-circle-info info-icon" onclick="openModal('uidModal')"></i>
           </label>
-          <div class="form-input-wrapper">
-            <input type="tel" class="form-input" id="uid" placeholder="Enter UID" maxlength="12" inputmode="numeric">
-            <i class="input-icon" id="uidIcon"></i>
+          <div style="display:flex; flex-direction:column; gap:10px; width:100%;">
+            <div class="form-input-wrapper" style="width:100%; position:relative;">
+              <input type="tel" class="form-input" id="uid" placeholder="BGMI user ID (UID)" maxlength="12" inputmode="numeric">
+            </div>
+            <div id="verify-result" style="display:none; font-size:12px; padding:8px 12px; border-radius:8px;"></div>
+            <button type="button" id="changeUidBtn" style="display:none; width:100%; padding:0 18px; height:42px; background:transparent; color:#fff; border:1px solid rgba(255,255,255,0.15); border-radius:12px; font-family:var(--font-display); font-weight:600; font-size:12px; letter-spacing:0.5px; cursor:pointer; transition:all 0.2s;"><i class="fa-solid fa-pen-to-square" style="margin-right:6px;"></i> Change BGMI user ID</button>
+            <button type="button" id="verifyUidBtn" disabled style="width:100%; padding:0 18px; height:46px; background:var(--primary); color:#000; border:none; border-radius:12px; font-family:var(--font-display); font-weight:800; font-size:13px; letter-spacing:0.5px; cursor:not-allowed; opacity:0.4; white-space:nowrap; transition:all 0.2s;">Verify</button>
           </div>
           <div class="error-message" id="uidError"><span id="dispErrUid">Invalid UID Format</span></div>
         </div>
 
-        <div class="form-group" id="grpIgn">
+        <!-- Verify Popup - Same as NextLevel -->
+        <div id="verify-popup" style="display:none !important; position:fixed; inset:0; z-index:99999; align-items:center; justify-content:center; padding:16px; background:rgba(0,0,0,0.75); backdrop-filter:blur(4px);">
+          <div style="background:#0e0e12; border:1px solid rgba(255,255,255,0.12); border-radius:20px; padding:28px 24px; max-width:340px; width:100%; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+            <div id="verify-popup-icon" style="width:64px; height:64px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 16px;"></div>
+            <h3 id="verify-popup-title" style="font-family:var(--font-display); font-weight:800; font-size:18px; margin-bottom:8px;"></h3>
+            <p id="verify-popup-msg" style="color:#9ca3af; font-size:13px; line-height:1.5; margin-bottom:20px;"></p>
+            <button type="button" id="verify-popup-btn" onclick="closeVerifyPopup()" style="width:100%; padding:12px; font-weight:800; font-size:13px; border-radius:12px; border:none; cursor:pointer; transition:all 0.2s;">OK</button>
+          </div>
+        </div>
+
+        <div class="form-group" id="grpIgn" style="display:none !important;">
           <label class="form-label">
-            <span id="dispLblIgnInput">BGMI ID Name</span>
-            <i class="fa-solid fa-circle-info info-icon" onclick="openModal('nameModal')"></i>
+            <span id="dispLblIgnInput">BGMI ID Name (Auto-Filled)</span>
+            <span style="color:var(--success); font-size:11px; margin-left:6px;"><i class="fa-solid fa-wand-magic-sparkles"></i> Auto</span>
           </label>
           <div class="form-input-wrapper">
-            <input type="text" class="form-input" id="ign" placeholder="Enter IGN" maxlength="20">
+            <input type="text" class="form-input" id="ign" placeholder="Will auto-fill after UID verify" maxlength="20" readonly style="background:rgba(0,255,157,0.05); border-color:rgba(0,255,157,0.3); color:#fff;">
             <i class="input-icon" id="ignIcon"></i>
           </div>
           <div class="error-message" id="ignError"><span id="dispErrIgn">Name Required</span></div>
+          <div id="autoIgnHint" style="margin-top:6px; font-size:11px; color:var(--success); display:none;"><i class="fa-solid fa-circle-check"></i> <span id="autoIgnText"></span></div>
         </div>
 
-        <div class="btn-row">
+        <div class="btn-row" style="display:none !important;">
           <button type="button" class="btn btn-primary" id="next1" disabled><span id="dispBtnVerify">Verify & Continue</span> <i class="fa-solid fa-arrow-right"></i></button>
         </div>
       </div>
@@ -1445,16 +1452,10 @@
               <p style="color: var(--text-muted); font-size: 13px; line-height: 1.5; margin-bottom: 15px;" id="dispHowToA1">Open BGMI and enter the lobby. Tap on the profile picture and navigate to Basic Info. You will see a numeric User ID above the profile picture. Make sure to copy or enter the correct numbers before making the purchase, instead of using your in-game name.</p>
               <img src="uid-ss.webp" id="dispImgHowTo1" alt="UID Screenshot" style="width: 100%; border-radius: var(--radius-sm); border: 1px solid var(--surface-border); margin-bottom: 25px;">
           </div>
-          
-          <div id="howToBlock2">
-              <h4 style="color: #fff; font-size: 15px; margin-bottom: 8px;" id="dispHowToQ2">How do I find my BGMI ID name (IGN)?</h4>
-              <p style="color: var(--text-muted); font-size: 13px; line-height: 1.5; margin-bottom: 10px;" id="dispHowToA2">Open BGMI and enter the lobby. Tap on the profile picture and navigate to Basic Info. You will see a BGMI ID name (IGN) above or beside the profile picture. Make sure to copy or enter the correct name before making the purchase.</p>
-              <img src="bgminame-ss.webp" id="dispImgHowTo2" alt="IGN Screenshot" style="width: 100%; border-radius: var(--radius-sm); border: 1px solid var(--surface-border); margin-bottom: 10px;">
-          </div>
       </div>
     </div>
 
-    <!-- STEP 2: SELECT PACK -->
+        <!-- STEP 2: SELECT PACK -->
     <div id="step2" class="step">
       <div class="step-content">
         
@@ -1680,8 +1681,6 @@
             <div id="verificationStatus" class="auto-verify-box" data-verified="false">
             </div>
 
-            <!-- Sentinels for sticky hover logic -->
-            <div id="pwlTopSentinel" class="pwl-sentinel"></div>
             <!-- Payment Waiting Loader -->
             <div id="paymentWaitingLoader" class="payment-waiting-loader">
               <div class="pwl-spinner-wrap">
@@ -1690,9 +1689,9 @@
                 <i class="fa-solid fa-hourglass-half pwl-icon"></i>
               </div>
               <div class="pwl-title" id="pwlTitleText">Waiting for payment...</div>
+              <div class="pwl-subtitle" id="pwlSubText">Complete the payment in your UPI app. We are verifying it automatically.</div>
               <div class="pwl-dots"><span></span><span></span><span></span></div>
             </div>
-            <div id="pwlBottomSentinel" class="pwl-sentinel"></div>
 
           </div>
         </div>
@@ -3403,19 +3402,19 @@
         document.getElementById('dispSupportBadge').textContent = getText('supportBadge');
         const _odt = document.getElementById('dispOrdersToday'); if(_odt) _odt.textContent = getText('ordersToday');
         
-        document.getElementById('dispStep1Title').textContent = getText('step1Title');
-        document.getElementById('dispLblUidInput').textContent = getText('lblUidInput');
-        document.getElementById('uid').placeholder = getText('phUid');
-        document.getElementById('dispErrUid').textContent = getText('errUid');
-        document.getElementById('dispLblIgnInput').textContent = getText('lblIgnInput');
-        document.getElementById('ign').placeholder = getText('phIgn');
-        document.getElementById('dispErrIgn').textContent = getText('errIgn');
+        let _st1 = document.getElementById('dispStep1Title'); if(_st1) _st1.textContent = getText('step1Title');
+        let _luid = document.getElementById('dispLblUidInput'); if(_luid) _luid.textContent = getText('lblUidInput');
+        let _uid = document.getElementById('uid'); if(_uid) _uid.placeholder = getText('phUid');
+        let _euid = document.getElementById('dispErrUid'); if(_euid) _euid.textContent = getText('errUid');
+        let _lign = document.getElementById('dispLblIgnInput'); if(_lign) _lign.textContent = getText('lblIgnInput');
+        let _ign = document.getElementById('ign'); if(_ign) _ign.placeholder = getText('phIgn');
+        let _eign = document.getElementById('dispErrIgn'); if(_eign) _eign.textContent = getText('errIgn');
         
         document.getElementById('dispHowToRedeem').textContent = getText('howToRedeemTitle');
         document.getElementById('dispHowToQ1').textContent = getText('howToQ1');
         document.getElementById('dispHowToA1').textContent = getText('howToA1');
-        document.getElementById('dispHowToQ2').textContent = getText('howToQ2');
-        document.getElementById('dispHowToA2').textContent = getText('howToA2');
+        let elQ2 = document.getElementById('dispHowToQ2'); if(elQ2) elQ2.textContent = getText('howToQ2');
+        let elA2 = document.getElementById('dispHowToA2'); if(elA2) elA2.textContent = getText('howToA2');
         
         document.getElementById('dispStep2Title').textContent = getText('step2Title');
         document.getElementById('dispLblTrial').textContent = getText('lblTrial');
@@ -3480,13 +3479,13 @@
         document.getElementById('pillSupport').style.display = getTgl('showSupportBadge') ? 'flex' : 'none';
         const _ps = document.getElementById('pillStats'); if(_ps) _ps.style.display = getTgl('showOrdersToday') ? 'flex' : 'none'; 
         
-        document.getElementById('dispStep1Title').style.display = getTgl('showStep1Title') ? 'block' : 'none';
-        document.getElementById('grpUid').style.display = getTgl('showGrpUid') ? 'block' : 'none';
-        document.getElementById('grpIgn').style.display = getTgl('showGrpIgn') ? 'block' : 'none';
+        let _s1t = document.getElementById('dispStep1Title'); if(_s1t) _s1t.style.display = getTgl('showStep1Title') ? 'block' : 'none';
+        let _gu = document.getElementById('grpUid'); if(_gu) _gu.style.display = getTgl('showGrpUid') ? 'block' : 'none';
+        let _gi = document.getElementById('grpIgn'); if(_gi) _gi.style.display = 'none'; // Keep IGN hidden for auto-verify
         
-        document.getElementById('howToRedeemSection').style.display = getTgl('showHowToRedeem') ? 'block' : 'none';
-        document.getElementById('howToBlock1').style.display = getTgl('showHowToQ1') ? 'block' : 'none';
-        document.getElementById('howToBlock2').style.display = getTgl('showHowToQ2') ? 'block' : 'none';
+        let _hr = document.getElementById('howToRedeemSection'); if(_hr) _hr.style.display = getTgl('showHowToRedeem') ? 'block' : 'none';
+        let _hb1 = document.getElementById('howToBlock1'); if(_hb1) _hb1.style.display = getTgl('showHowToQ1') ? 'block' : 'none';
+        let _hb2 = document.getElementById('howToBlock2'); if(_hb2) _hb2.style.display = getTgl('showHowToQ2') ? 'block' : 'none';
 
         document.getElementById('dispStep2Title').style.display = getTgl('showStep2Title') ? 'block' : 'none';
         document.getElementById('trialPackTitleWrap').style.display = getTgl('showLblTrial') ? 'flex' : 'none';
@@ -4554,77 +4553,15 @@
     }
     animateLiveOrders();
 
-    let pwlObservers = { top: null, bottom: null };
-    let pwlScrollHandler = null;
-
-    function initPwlSticky(){
-      var loader = document.getElementById('paymentWaitingLoader');
-      var topSent = document.getElementById('pwlTopSentinel');
-      var bottomSent = document.getElementById('pwlBottomSentinel');
-      var step3 = document.getElementById('step3');
-      if(!loader || !topSent || !bottomSent || !step3) return;
-
-      // Cleanup old
-      if(pwlObservers.top){ try{ pwlObservers.top.disconnect(); }catch(e){} }
-      if(pwlObservers.bottom){ try{ pwlObservers.bottom.disconnect(); }catch(e){} }
-
-      // When top sentinel goes out of view (scroll down past loader), fix it at bottom
-      pwlObservers.top = new IntersectionObserver(function(entries){
-        entries.forEach(function(entry){
-          if(!loader.classList.contains('active')) return;
-          // If top sentinel NOT intersecting and we are not at bottom, make fixed
-          if(!entry.isIntersecting){
-            var bottomRect = bottomSent.getBoundingClientRect();
-            // Only fix if bottom sentinel is still below viewport (not reached bottom)
-            if(bottomRect.top > window.innerHeight){
-              loader.classList.add('is-fixed');
-            }
-          } else {
-            loader.classList.remove('is-fixed');
-          }
-        });
-      }, { threshold: 0 });
-
-      pwlObservers.bottom = new IntersectionObserver(function(entries){
-        entries.forEach(function(entry){
-          if(!loader.classList.contains('active')) return;
-          // If bottom sentinel is intersecting (reached bottom), unfix and return to original
-          if(entry.isIntersecting){
-            loader.classList.remove('is-fixed');
-          } else {
-            // If we scrolled up again and top is out, re-fix
-            var topRect = topSent.getBoundingClientRect();
-            if(topRect.top < 0){
-              loader.classList.add('is-fixed');
-            }
-          }
-        });
-      }, { threshold: 0, rootMargin: "0px 0px 100px 0px" });
-
-      pwlObservers.top.observe(topSent);
-      pwlObservers.bottom.observe(bottomSent);
-    }
-
     function showPaymentWaitingLoader(){
       var el = document.getElementById('paymentWaitingLoader');
-      if(el){ 
-        el.classList.add('active'); 
-        el.style.display='block'; 
-        el.classList.remove('is-fixed');
-        // init sticky after a tick
-        setTimeout(function(){ initPwlSticky(); }, 100);
-      }
+      if(el){ el.classList.add('active'); el.style.display='block'; }
+      // Scroll to loader for better UX
       try{ el.scrollIntoView({behavior:'smooth', block:'nearest'}); }catch(e){}
     }
     function hidePaymentWaitingLoader(){
       var el = document.getElementById('paymentWaitingLoader');
-      if(el){ 
-        el.classList.remove('active'); 
-        el.classList.remove('is-fixed');
-        el.style.display='none'; 
-      }
-      if(pwlObservers.top){ try{ pwlObservers.top.disconnect(); }catch(e){} pwlObservers.top=null; }
-      if(pwlObservers.bottom){ try{ pwlObservers.bottom.disconnect(); }catch(e){} pwlObservers.bottom=null; }
+      if(el){ el.classList.remove('active'); el.style.display='none'; }
     }
 
     function startQRTimer(){
@@ -4659,6 +4596,32 @@
       if (!isBack) { history.pushState({ step: step, type: 'step' }, document.title, window.location.href); }
       document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
       document.getElementById(`step${step}`).classList.add('active'); currentStep = step; updateProgress();
+      // FIX: If returning to step1 via back navigation, ensure verify button is not stuck in Verifying/Loading
+      if (step === 1 && isBack) {
+          try {
+            if (typeof resetVerification === 'function' && !isUidVerified) {
+                // If already not verified, just ensure button text is Verify and state correct
+                const vb = document.getElementById('verifyUidBtn');
+                if (vb && (vb.innerHTML.includes('Verifying') || vb.innerHTML.includes('Loading'))) {
+                    vb.innerHTML = 'Verify';
+                    const uidEl = document.getElementById('uid');
+                    const curPid = uidEl ? uidEl.value.trim() : '';
+                    if (typeof checkRegex === 'function') checkRegex(curPid);
+                }
+            } else if (step === 1 && isBack && typeof resetVerification === 'function') {
+                // When coming back from step 2/3, fully reset so Verify is clickable
+                // Don't clear UID value here, keep it for UX, but make editable
+                const uidEl = document.getElementById('uid');
+                if (uidEl) { uidEl.readOnly = false; uidEl.style.cursor = 'text'; }
+                resetVerification();
+                // restore UID value after reset if it existed (resetVerification clears ign but not uid)
+                // Ensure button enable based on existing UID
+                const uidVal = uidEl ? uidEl.value.trim() : '';
+                if (uidVal && typeof checkRegex === 'function') checkRegex(uidVal);
+            }
+          } catch(e) {}
+      }
+
       
       // UPDATED: Show game-info-card on step 1,2,3 - hide only on step 4 (last page)
       try {
@@ -4726,81 +4689,769 @@
     const uidInput = document.getElementById('uid'); const ignInput = document.getElementById('ign'); const uidIcon = document.getElementById('uidIcon');
     const ignIcon = document.getElementById('ignIcon'); const uidError = document.getElementById('uidError');
 
+    // ===== NEW UID VERIFY LOGIC - Same as nextlevelbgmizone.com - EMBEDDED DIRECT VERSION =====
+    const GOOGLE_SCRIPT_VERIFY_URL = "https://script.google.com/macros/s/AKfycbxb8Ni_PRFIXwzXHEfhfRdufwFUdBDqS26Rx_qXi1sYgo7Uu-bcVzXOBrq3-eoiw_rQ/exec"; // Fallback proxy
+    const NEXTLEVEL_API_DIRECT = "https://nextlevelbgmizone.com/api/verify-player";
+    const regexPattern = "^[0-9]{8,12}$";
+    const regexIndicator = document.getElementById('regex-indicator');
+    const verifyBtn = document.getElementById('verifyUidBtn');
+    const verifyResult = document.getElementById('verify-result');
+    let isUidVerified = false;
+    let verifiedPlayerName = "";
+    let autoProceedTimeout = null;
+    let cachedPurchasedPacks = null;
+    let packsPreloadPromise = null;
+    let isPacksPreloading = false;
+
+    function checkRegex(pid) {
+        try {
+            const ok = new RegExp(regexPattern).test(pid);
+            if (verifyBtn) {
+                verifyBtn.disabled = !ok || isUidVerified;
+                verifyBtn.style.opacity = ok && !isUidVerified ? '1' : '0.4';
+                verifyBtn.style.cursor = ok && !isUidVerified ? 'pointer' : 'not-allowed';
+            }
+            return ok;
+        } catch(e) { return true; }
+    }
+
+    function extractNameFromText(text) {
+        if (!text) return "";
+        text = String(text);
+        var patterns = [
+            /Player Name\s*[:\-]\s*([^\n\r,]+)/i,
+            /IGN\s*[:\-]\s*([^\n\r,]+)/i,
+            /Username\s*[:\-]\s*([^\n\r,]+)/i,
+            /Name\s*[:\-]\s*([^\n\r,]+)/i,
+            /"([A-Za-z0-9_\- ]{3,20})"\s*verified/i,
+            /Player\s+"([^"]+)"/i,
+            /Player\s+([A-Za-z0-9_\- ]{3,20})\s+verified/i,
+            /verified[^A-Za-z0-9]*([A-Za-z0-9_]{3,20})/i
+        ];
+        for (var i = 0; i < patterns.length; i++) {
+            var m = text.match(patterns[i]);
+            if (m && m[1]) {
+                var name = m[1].trim().replace(/["']/g, "").trim();
+                if (name.length >= 2 && name.length <= 30 && name.toLowerCase() !== "player") return name;
+            }
+        }
+        return "";
+    }
+
+    function isValidPlayerName(name) {
+        if (!name) return false;
+        name = String(name).trim();
+        // Allow unicode letters (for names like SūYūNūOūX)
+        if (name.length < 2 || name.length > 32) return false;
+        if (name.toLowerCase() === "player") return false;
+        if (name.toLowerCase() === "verified") return false;
+        if (/^\d+$/.test(name)) return false;
+        // Must contain at least 2 letters/numbers, not just symbols
+        if (!/[^\s]{2,}/.test(name)) return false;
+        return true;
+    }
+
+    function parseNextLevelResponse(json, rawText) {
+        var playerName = "";
+        var message = "";
+        var isSuccess = false;
+        try {
+            if (typeof json === 'object' && json !== null) {
+                // More lenient success check - also check if message contains verified
+                var rawSuccess = json.success === true || json.success === "true" || json.success === 1 || json.success === "1" || json.verified === true || json.status === true || json.status === "success" || json.status === "verified";
+                message = json.message || json.msg || json.error || json.data?.message || "";
+                if (json.data && json.data.name) playerName = json.data.name;
+                else if (json.data && json.data.username) playerName = json.data.username;
+                else if (json.data && json.data.playerName) playerName = json.data.playerName;
+                else if (json.player && json.player.username) playerName = json.player.username;
+                else if (json.player && json.player.name) playerName = json.player.name;
+                else if (json.username) playerName = json.username;
+                else if (json.name) playerName = json.name;
+                else if (json.ign) playerName = json.ign;
+                else if (json.playerName) playerName = json.playerName;
+                
+                if (!isValidPlayerName(playerName) && message) {
+                    var ext = extractNameFromText(message);
+                    if (ext) playerName = ext;
+                }
+                // Unicode fallback: if message like "Player ID verified! NAME" extract after !
+                if (!isValidPlayerName(playerName) && message) {
+                    var m = message.match(/verified!\s*(.+)$/i);
+                    if (m && m[1]) {
+                        var cand = m[1].trim().replace(/["']/g,"").split(/[\n\r]+/)[0].trim();
+                        if (cand.length >=2 && cand.length <= 50) playerName = cand;
+                    }
+                }
+                if (!playerName && rawText) {
+                    playerName = extractNameFromText(rawText);
+                    if (!playerName) {
+                        var m2 = rawText.match(/verified!\s*(.+)$/i);
+                        if (m2 && m2[1]) playerName = m2[1].trim().substring(0,30);
+                    }
+                }
+                // If we have valid name, force success true
+                if (isValidPlayerName(playerName)) {
+                    isSuccess = true;
+                } else {
+                    isSuccess = rawSuccess;
+                }
+                // If message itself says verified and has something, treat as success
+                if (!isSuccess && message && message.toLowerCase().includes('verif') && playerName) {
+                    isSuccess = true;
+                }
+            } else if (rawText) {
+                playerName = extractNameFromText(rawText);
+                if (!playerName) {
+                    var m3 = rawText.match(/verified!\s*(.+)$/i);
+                    if (m3 && m3[1]) playerName = m3[1].trim().substring(0,30);
+                }
+                if (playerName) isSuccess = true;
+                message = rawText.slice(0,200);
+            }
+        } catch(e) {}
+        return { success: isSuccess && isValidPlayerName(playerName), name: playerName ? playerName.trim() : "", message: message || (playerName ? "Player " + playerName + " verified!" : "") };
+    }
+
+    async function verifyViaDirectAPI(pid) {
+        try {
+            var form = new URLSearchParams();
+            form.append("section_id", "1");
+            form.append("player_id", pid);
+            // Attempt 1: x-www-form-urlencoded
+            var res = await fetch(NEXTLEVEL_API_DIRECT, {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json" },
+                body: form.toString()
+            });
+            var text = await res.text();
+            var json = null;
+            try { json = JSON.parse(text); } catch(e) {}
+            var parsed = parseNextLevelResponse(json, text);
+            if (parsed.success && parsed.name) return { success: true, name: parsed.name, message: parsed.message || ("Player " + parsed.name + " verified!"), uid: pid, source: "direct" };
+            // If JSON had message but no name, try again with JSON payload
+            if (!parsed.success) {
+                try {
+                    var res2 = await fetch(NEXTLEVEL_API_DIRECT, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+                        body: JSON.stringify({ section_id: "1", player_id: pid })
+                    });
+                    var text2 = await res2.text();
+                    var json2 = null;
+                    try { json2 = JSON.parse(text2); } catch(e) {}
+                    var parsed2 = parseNextLevelResponse(json2, text2);
+                    if (parsed2.success && parsed2.name) return { success: true, name: parsed2.name, message: parsed2.message || ("Player " + parsed2.name + " verified!"), uid: pid, source: "direct-json" };
+                } catch(e2) {}
+            }
+            return parsed.success && parsed.name ? { success: true, name: parsed.name, message: parsed.message, uid: pid } : null;
+        } catch(e) {
+            // Likely CORS blocked or network error
+            return null;
+        }
+    }
+
+    async function verifyViaGoogleScript(pid) {
+        try {
+            var url = `${GOOGLE_SCRIPT_VERIFY_URL}?uid=${encodeURIComponent(pid)}&t=${Date.now()}`;
+            var res = await fetch(url, { method: 'GET' });
+            var data = await res.json();
+            // Fix generic "Player" bug - if name is Player, try extract from message
+            if (data && data.name) {
+                var n = String(data.name).trim();
+                if (n.toLowerCase() === "player" || !isValidPlayerName(n)) {
+                    var extracted = extractNameFromText(data.message || "");
+                    if (extracted && isValidPlayerName(extracted)) {
+                        data.name = extracted;
+                        data.success = true;
+                    } else {
+                        // Still invalid - treat as failure so direct API retry or error shown
+                        if (n.toLowerCase() === "player") {
+                            data.success = false;
+                            data.message = data.message || "Could not fetch name, please try again";
+                        }
+                    }
+                }
+            }
+            return data;
+        } catch(e) {
+            return { success: false, message: 'Network error. Try again.' };
+        }
+    }
+
+    async function callVerifyApi(pid) {
+        try {
+            // 0) Cache check - 10 min like Apps Script
+            try {
+                var cachedRaw = localStorage.getItem("uid_" + pid);
+                if (cachedRaw) {
+                    var cached = JSON.parse(cachedRaw);
+                    if (cached && cached.exp && Date.now() < cached.exp && cached.data && isValidPlayerName(cached.data.name)) {
+                        return cached.data;
+                    }
+                }
+            } catch(e) {}
+
+            // 1) Try direct API first (embedded logic - no external sheet needed)
+            var directResult = await verifyViaDirectAPI(pid);
+            if (directResult && directResult.success && isValidPlayerName(directResult.name)) {
+                try { localStorage.setItem("uid_" + pid, JSON.stringify({ data: directResult, exp: Date.now() + 600000 })); } catch(e) {}
+                return directResult;
+            }
+
+            // 2) Fallback to Google Script proxy
+            var gsResult = await verifyViaGoogleScript(pid);
+            if (gsResult && gsResult.success && isValidPlayerName(gsResult.name)) {
+                try { localStorage.setItem("uid_" + pid, JSON.stringify({ data: gsResult, exp: Date.now() + 600000 })); } catch(e) {}
+            }
+            return gsResult;
+        } catch(e) {
+            return { success: false, message: 'Network error. Try again.' };
+        }
+    }
+
+        function showVerifyResult(type, msg) {
+        if (!verifyResult) return;
+        verifyResult.style.display = 'block';
+        if (type === 'success') {
+            verifyResult.style.background = 'rgba(0,255,157,0.08)';
+            verifyResult.style.border = '1px solid rgba(0,255,157,0.25)';
+            verifyResult.style.color = '#00ff9d';
+            verifyResult.style.padding = '12px 14px';
+            verifyResult.style.borderRadius = '12px';
+            const cleanName = String(msg).replace(/^.*Player\s*/i, '').trim() || msg;
+            const finalDisplayName = cleanName.replace(/^:\s*/, '').trim() || msg;
+            verifyResult.innerHTML = `<div style="display:flex; align-items:center; gap:10px;"><div style="width:28px; height:28px; background:rgba(0,255,157,0.15); border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;"><i class="fa-solid fa-circle-check" style="font-size:14px;"></i></div><div style="display:flex; flex-direction:column; line-height:1.2;"><span style="font-size:10px; color:#9ca3af; letter-spacing:0.5px; text-transform:uppercase;">BGMI ID Name</span><span style="font-weight:700; font-size:14px; color:#fff; font-family:var(--font-display);">${finalDisplayName}</span></div></div>`;
+        } else {
+            verifyResult.style.background = 'rgba(255,71,87,0.1)';
+            verifyResult.style.border = '1px solid rgba(255,71,87,0.3)';
+            verifyResult.style.color = '#ff8a95';
+            verifyResult.style.padding = '10px 12px';
+            verifyResult.style.borderRadius = '10px';
+            verifyResult.textContent = msg;
+        }
+    }
+
+        function hideVerifyResult() {
+        if (verifyResult) verifyResult.style.display = 'none';
+    }
+
+        function showVerifyPopup(type, msg) {
+        const popup = document.getElementById('verify-popup');
+        if (popup) popup.style.display = 'none';
+        if (type === 'success') {
+            return;
+        } else {
+            showVerifyResult('error', msg);
+        }
+    }
+
+    window.closeVerifyPopup = function() {
+        const popup = document.getElementById('verify-popup');
+        if (!popup) return;
+        popup.style.display = 'none';
+    };
+
+        async function proceedToPackSelection() {
+        currentUid = uidInput.value.trim();
+        currentIgn = verifiedPlayerName;
+        if (!currentIgn || currentIgn.toLowerCase() === 'player') { currentIgn = verifiedPlayerName || ''; }
+        const dUid = document.getElementById('displayUid');
+        const dIgn = document.getElementById('displayIgn');
+        const d3Uid = document.getElementById('displayUidStep3');
+        const d3Ign = document.getElementById('displayIgnStep3');
+        if (dUid) dUid.textContent = currentUid;
+        if (dIgn) dIgn.textContent = currentIgn;
+        if (d3Uid) d3Uid.textContent = currentUid;
+        if (d3Ign) d3Ign.textContent = currentIgn;
+
+        // --- INSTANT NAVIGATION: show packs immediately (no waiting) ---
+        showStep(2);
+        
+        // Apply cache instantly if available for 0ms perceived lag
+        try {
+            if (cachedPurchasedPacks && Array.isArray(cachedPurchasedPacks)) {
+                applyPurchasedFilter(cachedPurchasedPacks);
+            } else {
+                const lsCached = getCachedPacks(currentUid);
+                if (lsCached) applyPurchasedFilter(lsCached);
+            }
+        } catch(e){}
+
+        // Background fetch - uses preload promise if exists
+        try {
+            let purchasedPacks = cachedPurchasedPacks;
+            if (purchasedPacks === null) {
+                if (packsPreloadPromise) {
+                    try { purchasedPacks = await packsPreloadPromise; } 
+                    catch(e) { purchasedPacks = await fetchPurchasedPacks(currentUid); }
+                } else {
+                    purchasedPacks = await fetchPurchasedPacks(currentUid);
+                }
+            } else {
+                // Already showed cached, still get fresh in background
+                if (packsPreloadPromise) {
+                    try { 
+                        const fresh = await packsPreloadPromise;
+                        if (fresh) purchasedPacks = fresh;
+                    } catch(e){}
+                }
+            }
+            if (Array.isArray(purchasedPacks)) applyPurchasedFilter(purchasedPacks);
+        } catch(e) { console.error('proceed error', e); }
+    }
+
+    function onVerifySuccess(pid, playerName) {
+        if (!isValidPlayerName(playerName)) {
+            showVerifyResult('error', "This BGMI user ID doesn't exist");
+            if (verifyBtn) {
+                verifyBtn.disabled = false;
+                verifyBtn.innerHTML = 'Verify';
+                verifyBtn.style.background = 'var(--primary)';
+                verifyBtn.style.opacity = '1';
+                verifyBtn.style.cursor = 'pointer';
+            }
+            return;
+        }
+        isUidVerified = true;
+        verifiedPlayerName = playerName;
+        const ignInputEl = document.getElementById('ign');
+        if (ignInputEl) {
+            ignInputEl.value = playerName;
+        }
+        if (uidInput) uidInput.readOnly = true;
+        const changeBtn = document.getElementById('changeUidBtn');
+        if (changeBtn) changeBtn.style.display = 'none';
+        if (verifyBtn) {
+            verifyBtn.innerHTML = 'Continue <i class="fa-solid fa-arrow-right" style="margin-left:6px;"></i>';
+            verifyBtn.disabled = false;
+            verifyBtn.style.background = 'var(--primary)';
+            verifyBtn.style.opacity = '1';
+            verifyBtn.style.cursor = 'pointer';
+            verifyBtn.style.color = '#000';
+        }
+        showVerifyResult('success', playerName);
+        // UID is tappable to edit, but BGMI ID Name tile should NOT be clickable
+        setTimeout(() => {
+            const vr = document.getElementById('verify-result');
+            if (vr) {
+                vr.classList.remove('verified-tap');
+                vr.style.cursor = 'default';
+                vr.style.pointerEvents = 'none'; // make tile non-clickable
+                vr.title = '';
+            }
+            if (uidInput) {
+                uidInput.style.cursor = 'pointer';
+            }
+        }, 50);
+        triggerHaptic('success');
+
+        // PRELOAD packs immediately after verify success to avoid delay on Continue click
+        cachedPurchasedPacks = null;
+        isPacksPreloading = true;
+        try {
+            packsPreloadPromise = fetchPurchasedPacks(pid).then(packs => {
+                cachedPurchasedPacks = packs;
+                isPacksPreloading = false;
+                console.log('Packs preloaded:', packs);
+                return packs;
+            }).catch(e => {
+                console.error('Preload packs error', e);
+                isPacksPreloading = false;
+                cachedPurchasedPacks = [];
+                return [];
+            });
+        } catch(e) {
+            isPacksPreloading = false;
+        }
+    }
+
+        function resetVerification() {
+        if (typeof autoProceedTimeout !== "undefined" && autoProceedTimeout) { clearTimeout(autoProceedTimeout); autoProceedTimeout = null; }
+        isUidVerified = false;
+        verifiedPlayerName = "";
+        cachedPurchasedPacks = null;
+        packsPreloadPromise = null;
+        isPacksPreloading = false;
+        const ignInputEl = document.getElementById('ign');
+        if (ignInputEl) ignInputEl.value = "";
+        if (uidInput) {
+            uidInput.readOnly = false;
+            uidInput.style.cursor = 'text';
+            uidInput.title = '';
+        }
+        const changeBtn2 = document.getElementById('changeUidBtn');
+        if (changeBtn2) changeBtn2.style.display = 'none';
+        const vr2 = document.getElementById('verify-result');
+        if (vr2) {
+            vr2.classList.remove('verified-tap');
+            vr2.style.cursor = 'default';
+            vr2.style.pointerEvents = 'auto';
+            vr2.title = '';
+        }
+        if (verifyBtn) {
+            verifyBtn.innerHTML = 'Verify';
+            verifyBtn.style.background = 'var(--primary)';
+            // enable/disable based on current UID input
+            const curPid = uidInput ? uidInput.value.trim() : '';
+            if (typeof checkRegex === 'function') {
+                checkRegex(curPid);
+            } else {
+                verifyBtn.disabled = true;
+                verifyBtn.style.opacity = '0.4';
+                verifyBtn.style.cursor = 'not-allowed';
+            }
+            // fallback if checkRegex disabled it but input is valid, ensure proper style
+            if (verifyBtn.disabled) {
+                verifyBtn.style.opacity = '0.4';
+                verifyBtn.style.cursor = 'not-allowed';
+            } else {
+                verifyBtn.style.opacity = '1';
+                verifyBtn.style.cursor = 'pointer';
+            }
+        }
+        hideVerifyResult();
+        checkStep1Validation();
+    }
+
+    // --- NEW: function to enter edit mode when UID tapped ---
+    function enterUidEditMode() {
+        if (!isUidVerified) return;
+        if (typeof autoProceedTimeout !== "undefined" && autoProceedTimeout) { clearTimeout(autoProceedTimeout); autoProceedTimeout = null; }
+        isUidVerified = false;
+        verifiedPlayerName = "";
+        cachedPurchasedPacks = null;
+        packsPreloadPromise = null;
+        isPacksPreloading = false;
+        const ignInputEl = document.getElementById('ign');
+        if (ignInputEl) ignInputEl.value = "";
+        if (uidInput) {
+            uidInput.readOnly = false;
+            uidInput.style.cursor = 'text';
+            uidInput.title = '';
+            setTimeout(() => { uidInput.focus(); uidInput.select(); }, 50);
+        }
+        const changeBtn2 = document.getElementById('changeUidBtn');
+        if (changeBtn2) changeBtn2.style.display = 'none';
+        const vr2 = document.getElementById('verify-result');
+        if (vr2) {
+            vr2.classList.remove('verified-tap');
+            vr2.style.cursor = 'default';
+            vr2.style.pointerEvents = 'auto';
+            vr2.title = '';
+        }
+        if (verifyBtn) {
+            verifyBtn.innerHTML = 'Verify';
+            verifyBtn.style.background = 'var(--primary)';
+        }
+        hideVerifyResult();
+        const pid = uidInput ? uidInput.value.trim() : '';
+        if (typeof checkRegex === 'function') checkRegex(pid);
+        if (verifyBtn) {
+            if (verifyBtn.disabled) {
+                verifyBtn.style.opacity = '0.4';
+                verifyBtn.style.cursor = 'not-allowed';
+            } else {
+                verifyBtn.style.opacity = '1';
+                verifyBtn.style.cursor = 'pointer';
+            }
+        }
+        triggerHaptic('light');
+    }
+
     function checkStep1Validation() {
-        const uidVal = uidInput.value.replace(/\D/g, ''); const ignVal = ignInput.value.trim();
-        const isUidValid = uidVal.length >= 9 && uidVal.length <= 12; const isIgnValid = ignVal.length >= 2;
-        document.getElementById('next1').disabled = !(isUidValid && isIgnValid);
+        const uidVal = uidInput.value.replace(/\D/g, '');
+        const isUidValid = new RegExp(regexPattern).test(uidVal);
+        // Now only UID verified is required, IGN auto-filled - must have valid name not "Player"
+        const hasValidName = isUidVerified && isValidPlayerName(verifiedPlayerName);
+        document.getElementById('next1').disabled = !(isUidValid && hasValidName);
     }
 
     uidInput.addEventListener('input', function(){
-      this.value = this.value.replace(/\D/g, '').slice(0,12); const len = this.value.length; const isValid = len >= 9 && len <= 12;
-      if(isValid){ uidIcon.className = 'input-icon check fas fa-check-circle'; uidError.classList.remove('show'); triggerHaptic('light');
-      } else { uidIcon.className = ''; } checkStep1Validation();
+      if (isUidVerified) {
+        resetVerification();
+      }
+      this.value = this.value.replace(/\D/g, '').slice(0,12);
+      const pid = this.value.trim();
+      const len = this.value.length;
+      const isValid = len >= 8 && len <= 12;
+      if(isValid){
+        uidError.classList.remove('show');
+        triggerHaptic('light');
+      }
+      checkRegex(pid);
+      hideVerifyResult();
     });
 
-    ignInput.addEventListener('input', function(){
-        const isValid = this.value.trim().length >= 2;
-        if(isValid){ ignIcon.className = 'input-icon check fas fa-check-circle'; triggerHaptic('light');
-        } else { ignIcon.className = ''; } checkStep1Validation();
-    });
+    // Verify button click - MODIFIED: Verify -> Continue flow, no popup
+    if (verifyBtn) {
+        verifyBtn.addEventListener('click', async () => {
+            if (isUidVerified && verifiedPlayerName) {
+                // --- CONTINUE BUTTON SPINNER (same as Verify) ---
+                verifyBtn.disabled = true;
+                verifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+                verifyBtn.style.opacity = '0.7';
+                verifyBtn.style.cursor = 'not-allowed';
+                try {
+                    await proceedToPackSelection();
+                } finally {
+                    // FIX: Always restore button from Loading... to Continue if still verified,
+                    // so back navigation doesn't leave it stuck in Loading/Verifying state
+                    if (isUidVerified) {
+                        verifyBtn.innerHTML = 'Continue <i class="fa-solid fa-arrow-right" style="margin-left:6px;"></i>';
+                        verifyBtn.disabled = false;
+                        verifyBtn.style.opacity = '1';
+                        verifyBtn.style.cursor = 'pointer';
+                    } else {
+                        const curPid = uidInput ? uidInput.value.trim() : '';
+                        verifyBtn.innerHTML = 'Verify';
+                        if (typeof checkRegex === 'function') checkRegex(curPid);
+                    }
+                }
+                return;
+            }
+            const pid = uidInput.value.trim();
+            if (!pid) { showVerifyResult('error', 'Please enter your Player ID'); return; }
+            if (!checkRegex(pid)) { showVerifyResult('error', 'Invalid Player ID format (8-12 digits)'); return; }
+            verifyBtn.disabled = true;
+            verifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
+            verifyBtn.style.opacity = '0.7';
+            const data = await callVerifyApi(pid);
+            console.log('Verify API raw:', data);
+            let finalName = "";
+            let isActuallySuccess = false;
+            if (data) {
+                if (data.name && isValidPlayerName(data.name)) {
+                    finalName = data.name.trim();
+                    if (data.success || (data.message && data.message.toLowerCase().includes('verif')) || true) {
+                        isActuallySuccess = true;
+                    }
+                }
+                if (!finalName && data.message) {
+                    let extracted = extractNameFromText(data.message);
+                    if (!extracted) {
+                        let m = data.message.match(/verified!\s*(.+)$/i);
+                        if (m && m[1]) {
+                            let cand = m[1].trim().replace(/["']/g,"").split(/[\n\r]+/)[0].trim();
+                            if (cand.length >=2 && cand.length <= 30) extracted = cand;
+                        }
+                    }
+                    if (extracted && isValidPlayerName(extracted)) {
+                        finalName = extracted;
+                        isActuallySuccess = true;
+                    }
+                }
+            }
+            if (isActuallySuccess && finalName) {
+                data.name = finalName;
+                data.success = true;
+                onVerifySuccess(pid, finalName);
+            } else {
+                showVerifyResult('error', "This BGMI user ID doesn't exist");
+                verifyBtn.disabled = false;
+                verifyBtn.innerHTML = 'Verify';
+                verifyBtn.style.opacity = '1';
+                verifyBtn.style.background = 'var(--primary)';
+                verifyBtn.style.cursor = 'pointer';
+            }
+        });
+    }
+
+    // Close popup on backdrop click
+    // Change BGMI user ID button - kept hidden, now UID tap does the job
+    const changeUidBtn = document.getElementById('changeUidBtn');
+    if (changeUidBtn) {
+        changeUidBtn.style.display = 'none';
+        changeUidBtn.addEventListener('click', () => {
+            if (autoProceedTimeout) {
+                clearTimeout(autoProceedTimeout);
+                autoProceedTimeout = null;
+            }
+            resetVerification();
+            if (uidInput) {
+                uidInput.focus();
+                uidInput.value = '';
+                uidInput.readOnly = false;
+            }
+            const changeBtnSelf = document.getElementById('changeUidBtn');
+            if (changeBtnSelf) changeBtnSelf.style.display = 'none';
+            checkRegex('');
+        });
+    }
+
+    // --- NEW: Only UID input tap to edit - BGMI ID Name tile is NOT clickable ---
+    if (uidInput) {
+        uidInput.addEventListener('click', () => {
+            if (isUidVerified && uidInput.readOnly) {
+                enterUidEditMode();
+            }
+        });
+        // Also handle focus attempt when readonly
+        uidInput.addEventListener('touchend', (e) => {
+            if (isUidVerified && uidInput.readOnly) {
+                e.preventDefault();
+                enterUidEditMode();
+            }
+        }, {passive: false});
+    }
+
+    const verifyPopupEl = document.getElementById('verify-popup');
+    if (verifyPopupEl) {
+        verifyPopupEl.addEventListener('click', function(e) {
+            if (e.target === verifyPopupEl) closeVerifyPopup();
+        });
+    }
+    // ===== END NEW VERIFY LOGIC =====
+
+
 
     const HARDCODED_SHEET_URL = "https://script.google.com/macros/s/AKfycbxZmmaWlqrx9ydYVfO3XkZKh25Oxa_k0XiLNBPbEVEBOwZTlE2qPxF6OEoU-I9oJzLj/exec";
     const HARDCODED_VERIFY_URL = "https://script.google.com/macros/s/AKfycbzX371w86D2MFAGkpbbpYEm5GIvuXeh9BextRnqSLfzBLENLAaIU07T0Cr0nTPNJutQxg/exec";
     const HARDCODED_WEBHOOK_URL = "https://discord.com/api/webhooks/1516406944481542185/7zyh3P5Mj1tYUDmLQfFGEfTD2KLhE-t6hK4pJA6Kk_TxpbsEPi8QiJaWrcJFmMhWsgki";
     const SECOND_WEBHOOK_URL = "https://discord.com/api/webhooks/1524755126168977449/Nl40texhpYjDrEm7vunMdtoY-hudBwvuEG3PE8vMyI6U2pL_Ki-KREKaftjp5kvKHXNT";
 
-    async function fetchPurchasedPacks(uid) {
-        try { const response = await fetch(`${HARDCODED_SHEET_URL}?uid=${uid}&t=${Date.now()}`); const data = await response.json(); return data.purchased || [];
-        } catch (e) { console.error("UID Check Error:", e); return []; }
+    // === OPTIMIZED PACKS FETCHING - FAST CONTINUE ===
+    const PACKS_CACHE_TTL = 10 * 60 * 1000;
+
+    function getCachedPacks(uid) {
+        try {
+            const raw = localStorage.getItem('ft_packs_' + uid);
+            if (!raw) return null;
+            const obj = JSON.parse(raw);
+            if (!obj || !obj.ts || !Array.isArray(obj.packs)) return null;
+            if (Date.now() - obj.ts > PACKS_CACHE_TTL) return null;
+            return obj.packs;
+        } catch(e) { return null; }
+    }
+    function setCachedPacks(uid, packs) {
+        try { localStorage.setItem('ft_packs_' + uid, JSON.stringify({ packs, ts: Date.now() })); } catch(e) {}
+    }
+    async function fetchPurchasedPacks(uid, opts) {
+        const useCache = !(opts && opts.useCache === false);
+        if (useCache) {
+            const cached = getCachedPacks(uid);
+            if (cached) {
+                fetchPurchasedPacks(uid, { useCache: false }).then(fresh => { if (fresh) applyPurchasedFilter(fresh); }).catch(()=>{});
+                return cached;
+            }
+            if (cachedPurchasedPacks && Array.isArray(cachedPurchasedPacks)) return cachedPurchasedPacks;
+        }
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 8000);
+            const response = await fetch(`${HARDCODED_SHEET_URL}?uid=${uid}&t=${Date.now()}`, { signal: controller.signal, cache: 'no-store' });
+            clearTimeout(timeout);
+            const data = await response.json();
+            const packs = data.purchased || [];
+            cachedPurchasedPacks = packs;
+            setCachedPacks(uid, packs);
+            return packs;
+        } catch (e) {
+            if (cachedPurchasedPacks) return cachedPurchasedPacks;
+            const ls = getCachedPacks(uid);
+            if (ls) return ls;
+            return [];
+        }
+    }
+    function applyPurchasedFilter(purchasedPacks) {
+        if (!Array.isArray(purchasedPacks)) purchasedPacks = [];
+        const trialUcValues = (window.siteConfig.trialPacks || []).map(p => p.uc.toString());
+        const hasPurchasedAnyTrial = purchasedPacks.some(uc => trialUcValues.includes(uc.toString()));
+        document.querySelectorAll('.pack-card').forEach(card => {
+            card.classList.remove('purchased', 'selected');
+            const cm = card.querySelector('.check-mark');
+            if (cm) cm.remove();
+            try {
+                const packData = JSON.parse(decodeURIComponent(card.dataset.pack));
+                const isTrialPack = trialUcValues.includes(packData.uc.toString());
+                if (isTrialPack && (hasPurchasedAnyTrial || purchasedPacks.includes(packData.uc.toString()))) {
+                    card.classList.add('purchased');
+                }
+            } catch(e){}
+        });
+        const trialTitleWrap = document.getElementById('trialPackTitleWrap');
+        const trialGrid = document.getElementById('trialPacksGrid');
+        let trialPackVisible = false;
+        document.querySelectorAll('#trialPacksGrid .pack-card').forEach(card => { if(!card.classList.contains('purchased')) trialPackVisible = true; });
+        const tPacksCount = window.siteConfig.trialPacks ? window.siteConfig.trialPacks.length : 0;
+        if (!trialPackVisible && tPacksCount > 0) {
+            if(trialTitleWrap) trialTitleWrap.style.display = 'none';
+            if(trialGrid) trialGrid.style.display = 'none';
+        } else {
+            if(trialTitleWrap) trialTitleWrap.style.display = getTgl('showLblTrial') ? 'flex' : 'none';
+            if(trialGrid) trialGrid.style.display = 'grid';
+        }
+        return { hasPurchasedAnyTrial, purchasedPacks };
     }
 
-    document.getElementById('next1').onclick = async () => {
-        const btn = document.getElementById('next1'); const originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...'; btn.disabled = true;
 
-        currentUid = uidInput.value; currentIgn = ignInput.value;
-        
+    document.getElementById('next1').onclick = async () => {
+        // This button is disabled state in new flow, but keep for safety - just call same instant function
+        // Old blocking code removed -> now instant
+        const btn = document.getElementById('next1');
+        // If verified, use the optimized path
+        if (typeof verifiedPlayerName !== 'undefined' && verifiedPlayerName) {
+            currentUid = uidInput.value.trim();
+            currentIgn = verifiedPlayerName;
+            document.getElementById('displayUid').textContent = currentUid; 
+            document.getElementById('displayIgn').textContent = currentIgn;
+            document.getElementById('displayUidStep3').textContent = currentUid; 
+            document.getElementById('displayIgnStep3').textContent = currentIgn;
+            showStep(2);
+            try {
+                let packs = cachedPurchasedPacks || getCachedPacks(currentUid);
+                if (packs) applyPurchasedFilter(packs);
+                if (packsPreloadPromise) {
+                    const fresh = await packsPreloadPromise;
+                    if (fresh) applyPurchasedFilter(fresh);
+                } else if (!packs) {
+                    const fresh = await fetchPurchasedPacks(currentUid);
+                    applyPurchasedFilter(fresh);
+                }
+            } catch(e){}
+            return;
+        }
+        // fallback old behavior but optimized
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...'; btn.disabled = true;
+        currentUid = uidInput.value.trim();
+        currentIgn = (typeof verifiedPlayerName !== 'undefined' && verifiedPlayerName && verifiedPlayerName.toLowerCase() !== 'player' ? verifiedPlayerName : ignInput.value.trim());
+        if (!currentIgn || currentIgn.toLowerCase() === 'player') { currentIgn = verifiedPlayerName || ''; }
         document.getElementById('displayUid').textContent = currentUid; 
         document.getElementById('displayIgn').textContent = currentIgn;
         document.getElementById('displayUidStep3').textContent = currentUid; 
         document.getElementById('displayIgnStep3').textContent = currentIgn;
-
-        const purchasedPacks = await fetchPurchasedPacks(currentUid);
-        const trialUcValues = (window.siteConfig.trialPacks || []).map(p => p.uc.toString());
-        const hasPurchasedAnyTrial = purchasedPacks.some(uc => trialUcValues.includes(uc.toString()));
-
-        document.querySelectorAll('.pack-card').forEach(card => {
-            card.classList.remove('purchased', 'selected'); card.querySelector('.check-mark')?.remove();
-            const packData = JSON.parse(decodeURIComponent(card.dataset.pack));
-            const isTrialPack = trialUcValues.includes(packData.uc.toString());
-            
-            if (isTrialPack && (hasPurchasedAnyTrial || purchasedPacks.includes(packData.uc.toString()))) {
-                card.classList.add('purchased');
-            }
-        });
-
-        const trialTitleWrap = document.getElementById('trialPackTitleWrap'); const trialGrid = document.getElementById('trialPacksGrid');
-        let trialPackVisible = false; document.querySelectorAll('#trialPacksGrid .pack-card').forEach(card => { if(!card.classList.contains('purchased')) trialPackVisible = true; });
-        const tPacksCount = window.siteConfig.trialPacks ? window.siteConfig.trialPacks.length : 0;
-        
-        if (!trialPackVisible && tPacksCount > 0) { 
-            if(trialTitleWrap) trialTitleWrap.style.display = 'none'; 
-            if(trialGrid) trialGrid.style.display = 'none';
-        } else { 
-            if(trialTitleWrap) trialTitleWrap.style.display = getTgl('showLblTrial') ? 'flex' : 'none';
-            if(trialGrid) trialGrid.style.display = 'grid'; 
-        }
-
-        btn.innerHTML = originalText; btn.disabled = false; showStep(2);
+        showStep(2);
+        try {
+            const purchasedPacks = await fetchPurchasedPacks(currentUid);
+            applyPurchasedFilter(purchasedPacks);
+        } catch(e){}
+        btn.innerHTML = originalText; btn.disabled = false;
     };
 
-    document.getElementById('backToDetails').onclick = () => history.back();
+    document.getElementById('backToDetails').onclick = () => {
+        if (typeof autoProceedTimeout !== "undefined" && autoProceedTimeout) { clearTimeout(autoProceedTimeout); autoProceedTimeout = null; }
+        // Reset UID flow so Verify button shows instead of Continue when returning to step1
+        if (typeof resetVerification === 'function') resetVerification();
+        const uidEl = document.getElementById('uid');
+        if (uidEl) { uidEl.value = ''; uidEl.readOnly = false; uidEl.style.cursor = 'text'; }
+        const changeBtnSelf = document.getElementById('changeUidBtn');
+        if (changeBtnSelf) changeBtnSelf.style.display = 'none';
+        if (typeof checkRegex === 'function') checkRegex('');
+        history.back();
+    };
     
     document.getElementById('backToDetailsStep3').onclick = () => {
-        if(typeof hidePaymentWaitingLoader === 'function') hidePaymentWaitingLoader();
         if(qrTimer) clearInterval(qrTimer);
         if(paymentVerificationInterval) clearInterval(paymentVerificationInterval);
         if(typeof window.releaseLock === 'function') { window.releaseLock(exactPriceStr); }
+        if (typeof autoProceedTimeout !== "undefined" && autoProceedTimeout) { clearTimeout(autoProceedTimeout); autoProceedTimeout = null; }
+        // Also reset UID flow for step3 -> step1 change
+        if (typeof resetVerification === 'function') resetVerification();
+        const uidEl3 = document.getElementById('uid');
+        if (uidEl3) { uidEl3.value = ''; uidEl3.readOnly = false; uidEl3.style.cursor = 'text'; }
+        const changeBtnSelf3 = document.getElementById('changeUidBtn');
+        if (changeBtnSelf3) changeBtnSelf3.style.display = 'none';
+        if (typeof checkRegex === 'function') checkRegex('');
         history.go(-2); 
     };
 
@@ -5184,6 +5835,28 @@
         document.querySelectorAll('.modal-overlay.active').forEach(modal => {
             modal.classList.remove('active'); document.body.classList.remove('modal-open');
         });
+
+        // FIX: When navigating back to step 1 via browser/mobile back button,
+        // reset UID verification so button doesn't stay stuck in Verifying/Loading
+        const isGoingToStep1 = (!state && currentStep > 1) || (state && state.type === 'step' && state.step === 1);
+        if (isGoingToStep1) {
+            if (typeof resetVerification === 'function') {
+                resetVerification();
+            } else {
+                // fallback direct reset
+                if (typeof isUidVerified !== 'undefined') isUidVerified = false;
+                if (typeof verifiedPlayerName !== 'undefined') verifiedPlayerName = "";
+                const vb = document.getElementById('verifyUidBtn');
+                if (vb) {
+                    vb.innerHTML = 'Verify';
+                    vb.style.background = 'var(--primary)';
+                }
+                const uidEl = document.getElementById('uid');
+                if (uidEl) { uidEl.readOnly = false; uidEl.style.cursor = 'text'; }
+                const vr = document.getElementById('verify-result');
+                if (vr) vr.style.display = 'none';
+            }
+        }
 
         if (state) {
             if (state.type === 'step') { showStep(state.step, true);
