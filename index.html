@@ -1300,19 +1300,22 @@
     <div id="step1" class="step active">
       <div class="step-content">
         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 25px;">
-            <h2 class="step-title" id="dispStep1Title" style="margin-bottom: 0;">Player Detail</h2>
+            <h2 class="step-title" id="dispStep1Title" style="margin-bottom: 0;">Player Details</h2>
         </div>
 
         <div class="form-group" id="grpUid">
           <label class="form-label">
-            <span id="dispLblUidInput">Enter your BGMI user id (UID)</span>
+            <span id="dispLblUidInput">BGMI Character ID (UID)</span>
             <i class="fa-solid fa-circle-info info-icon" onclick="openModal('uidModal')"></i>
           </label>
-          <div class="form-input-wrapper" style="width:100%; position:relative;">
-              <input type="tel" class="form-input" id="uid" placeholder="Enter your BGMI user id (UID)" maxlength="12" inputmode="numeric">
-              <i class="input-icon" id="uidIcon" style="display:none;"></i>
+          <div style="display:flex; gap:8px; width:100%; min-width:0;">
+            <div class="form-input-wrapper" style="flex:1; min-width:0; position:relative;">
+              <input type="tel" class="form-input" id="uid" placeholder="Enter UID" maxlength="12" inputmode="numeric" style="padding-right:36px;">
+              <i class="input-icon" id="uidIcon"></i>
+              <span id="regex-indicator" style="display:none; position:absolute; right:10px; top:50%; transform:translateY(-50%); font-weight:800; font-size:14px;"></span>
             </div>
-            <button type="button" id="verifyUidBtn" disabled style="margin-top:10px; width:100%; height:46px; background:var(--primary); color:#000; border:none; border-radius:12px; font-family:var(--font-display); font-weight:800; font-size:13px; letter-spacing:0.5px; cursor:not-allowed; opacity:0.4; transition:all 0.2s;">Verify</button>
+            <button type="button" id="verifyUidBtn" disabled style="flex-shrink:0; padding:0 18px; height:46px; background:var(--primary); color:#000; border:none; border-radius:12px; font-family:var(--font-display); font-weight:800; font-size:13px; letter-spacing:0.5px; cursor:not-allowed; opacity:0.4; white-space:nowrap; transition:all 0.2s;">Verify</button>
+          </div>
           <div class="error-message" id="uidError"><span id="dispErrUid">Invalid UID Format</span></div>
           <div id="verify-result" style="display:none; margin-top:8px; font-size:12px; padding:8px 12px; border-radius:8px;"></div>
         </div>
@@ -2110,9 +2113,9 @@
           </div>
 
           <div class="admin-subsection">
-              <label style="font-size:12px; color:var(--primary); font-weight:600;">Step 1: Player Detail Texts</label>
+              <label style="font-size:12px; color:var(--primary); font-weight:600;">Step 1: Player Details Texts</label>
               <div class="flex-row-center"><input type="checkbox" id="tgl_step1Title" class="admin-toggle-box"><input type="text" class="form-input" id="adminTextStep1" placeholder="Step 1 Title" style="font-size:12px; padding:8px;"></div>
-              <div class="flex-row-center"><input type="checkbox" id="tgl_grpUid" class="admin-toggle-box"><input type="text" class="form-input" id="adminTextLblUidInput" placeholder="Enter your BGMI user id (UID)" style="font-size:12px; padding:8px;"></div>
+              <div class="flex-row-center"><input type="checkbox" id="tgl_grpUid" class="admin-toggle-box"><input type="text" class="form-input" id="adminTextLblUidInput" placeholder="BGMI Character ID (UID)" style="font-size:12px; padding:8px;"></div>
               <div class="flex-row-center"><input type="text" class="form-input" id="adminTextPhUid" placeholder="Placeholder UID" style="font-size:12px; padding:8px; width:100%; margin-left: 26px;"></div>
               <div class="flex-row-center"><input type="text" class="form-input" id="adminTextErrUid" placeholder="Error: Invalid UID" style="font-size:12px; padding:8px; width:100%; margin-left: 26px;"></div>
               
@@ -2562,7 +2565,7 @@
             loaderText: "FlashTOP", tagline: "Instant game top-ups at affordable rates", partnerBadge: "BGMI Authorised Seller",
             secureBadge: "Secure", instantBadge: "Instant", supportBadge: "24/7", ordersToday: "Packs Delivered Today", 
             
-            step1Title: "Player Detail", lblUidInput: "Enter your BGMI user id (UID)", phUid: "Enter your BGMI user id (UID)", errUid: "Invalid UID Format",
+            step1Title: "Player Details", lblUidInput: "BGMI Character ID (UID)", phUid: "Enter UID", errUid: "Invalid UID Format",
             lblIgnInput: "BGMI ID Name", phIgn: "Enter IGN", errIgn: "Name Required",
             
             howToRedeemTitle: "How to redeem",
@@ -4556,10 +4559,13 @@
     let verifiedPlayerName = "";
 
     function checkRegex(pid) {
-        // Modified: removed tick indicator as per requirement
+        if (!regexPattern || !regexIndicator) return true;
         try {
             const ok = new RegExp(regexPattern).test(pid);
-            if (verifyBtn && verifyBtn.style.display !== 'none') {
+            regexIndicator.style.display = 'block';
+            regexIndicator.textContent = ok ? '✓' : '✗';
+            regexIndicator.style.color = ok ? '#00ff9d' : '#ff4757';
+            if (verifyBtn) {
                 verifyBtn.disabled = !ok || isUidVerified;
                 verifyBtn.style.opacity = ok && !isUidVerified ? '1' : '0.4';
                 verifyBtn.style.cursor = ok && !isUidVerified ? 'pointer' : 'not-allowed';
@@ -4815,8 +4821,8 @@
         popup.style.display = 'none';
     };
 
-        function onVerifySuccess(pid, playerName) {
-        // Critical fix: Ensure we never accept generic "Player" and show actual verified name
+    function onVerifySuccess(pid, playerName) {
+        // Critical fix: Ensure we never accept generic "Player"
         if (!isValidPlayerName(playerName)) {
             showVerifyPopup('error', 'Could not fetch valid player name. Please try again.');
             return;
@@ -4836,12 +4842,19 @@
         if (autoHint) autoHint.style.display = 'block';
         if (autoText) autoText.textContent = `Verified as ${playerName}`;
 
-        // Requirement 7: Hide verify button after verification
+        if (uidInput) uidInput.readOnly = true;
         if (verifyBtn) {
-            verifyBtn.style.display = 'none';
+            verifyBtn.textContent = '✓ Verified';
             verifyBtn.disabled = true;
+            verifyBtn.style.background = '#00ff9d';
+            verifyBtn.style.opacity = '1';
+            verifyBtn.style.cursor = 'not-allowed';
         }
-        // Tick removed as per requirement
+        if (uidIcon) uidIcon.className = 'input-icon check fas fa-check-circle';
+        if (regexIndicator) {
+            regexIndicator.textContent = '✓';
+            regexIndicator.style.color = '#00ff9d';
+        }
         showVerifyResult('success', `✓ ${playerName}`);
         checkStep1Validation();
         triggerHaptic('success');
@@ -4852,19 +4865,14 @@
         verifiedPlayerName = "";
         const grpIgn = document.getElementById('grpIgn');
         const ignInputEl = document.getElementById('ign');
-        const autoHint = document.getElementById('autoIgnHint');
         if (grpIgn) grpIgn.style.display = 'none';
         if (ignInputEl) ignInputEl.value = "";
-        if (autoHint) autoHint.style.display = 'none';
         if (uidInput) uidInput.readOnly = false;
         if (verifyBtn) {
             verifyBtn.textContent = 'Verify';
             verifyBtn.disabled = false;
-            verifyBtn.style.display = 'block';
-            verifyBtn.style.width = '100%';
             verifyBtn.style.background = 'var(--primary)';
             verifyBtn.style.opacity = '0.4';
-            verifyBtn.style.cursor = 'not-allowed';
         }
         hideVerifyResult();
         checkStep1Validation();
@@ -4887,8 +4895,11 @@
       const len = this.value.length;
       const isValid = len >= 8 && len <= 12;
       if(isValid){
+        uidIcon.className = 'input-icon check fas fa-check-circle';
         uidError.classList.remove('show');
         triggerHaptic('light');
+      } else {
+        uidIcon.className = '';
       }
       checkRegex(pid);
       hideVerifyResult();
@@ -4942,14 +4953,17 @@
                 // Override data.name with final extracted name
                 data.name = finalName;
                 data.success = true;
-                // Popup removed on success as per requirement - directly show BGMI ID name
+                showVerifyPopup('success', data.message || `Player ${finalName} verified!`);
                 onVerifySuccess(pid, finalName);
             } else {
                 showVerifyPopup('error', data.message || 'Verification failed. Invalid UID');
                 verifyBtn.disabled = false;
                 verifyBtn.textContent = 'Verify';
                 verifyBtn.style.opacity = '1';
-                // Tick removed
+                if (regexIndicator) {
+                    regexIndicator.textContent = '✗';
+                    regexIndicator.style.color = '#ff4757';
+                }
             }
         });
     }
