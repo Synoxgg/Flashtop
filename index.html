@@ -6253,5 +6253,272 @@
 
     console.log('Banner patch loaded - banners:', window.siteConfig?.gameInfo?.banners?.length);
 </script>
+
+<script>
+// ===== FLASH TOP FIX: Trial Packs purchased filter - ANURAG PATCH v2 =====
+(function() {
+  console.log('Applying trial packs fix...');
+  
+  // Ensure global vars exist
+  window._lastPurchasedPacks = window._lastPurchasedPacks || null;
+  if(typeof cachedPurchasedPacks === 'undefined') window.cachedPurchasedPacks = null;
+
+  // Override getCachedPacks to be more robust
+  window.getCachedPacks = window.getCachedPacks || function(uid) {
+    try {
+      const raw = localStorage.getItem('ft_packs_' + uid);
+      if (!raw) return null;
+      const obj = JSON.parse(raw);
+      if (!obj || !obj.ts || !Array.isArray(obj.packs)) return null;
+      if (Date.now() - obj.ts > (window.PACKS_CACHE_TTL || 10*60*1000)) return null;
+      return obj.packs;
+    } catch(e) { return null; }
+  };
+  // Keep local reference too
+  if(typeof getCachedPacks === 'undefined') {
+    getCachedPacks = window.getCachedPacks;
+  } else {
+    // override local function by reassigning to window version
+    const origGet = getCachedPacks;
+    getCachedPacks = function(uid) {
+      try {
+        const raw = localStorage.getItem('ft_packs_' + uid);
+        if (!raw) return null;
+        const obj = JSON.parse(raw);
+        if (!obj || !obj.ts || !Array.isArray(obj.packs)) return null;
+        if (Date.now() - obj.ts > (typeof PACKS_CACHE_TTL !== 'undefined' ? PACKS_CACHE_TTL : 10*60*1000)) return null;
+        return obj.packs;
+      } catch(e) { return null; }
+    };
+    window.getCachedPacks = getCachedPacks;
+  }
+
+  window.setCachedPacks = window.setCachedPacks || function(uid, packs) {
+    try { localStorage.setItem('ft_packs_' + uid, JSON.stringify({ packs, ts: Date.now() })); } catch(e) {}
+  };
+  if(typeof setCachedPacks === 'undefined') setCachedPacks = window.setCachedPacks;
+
+  // FIXED fetchPurchasedPacks - ALWAYS force network on verify, ignore empty cache
+  window.fetchPurchasedPacks = async function(uid, opts) {
+    const useCache = !(opts && opts.useCache === false);
+    // Normalize uid
+    uid = String(uid).trim();
+    if(!uid) return [];
+
+    if (useCache) {
+      const cached = getCachedPacks(uid);
+      // Only return cached if it has actual purchases, else go to network
+      if (cached && cached.length > 0) {
+        // background refresh for fresh data
+        window.fetchPurchasedPacks(uid, { useCache: false }).then(fresh => {
+          if(fresh && fresh.length>=0) {
+            try { window.applyPurchasedFilter(fresh); } catch(e){}
+          }
+        }).catch(()=>{});
+        window._lastPurchasedPacks = cached;
+        if(typeof cachedPurchasedPacks !== 'undefined') cachedPurchasedPacks = cached;
+        return cached;
+      }
+      // if cached exists but empty, don't trust it - go network
+      if (typeof cachedPurchasedPacks !== 'undefined' && cachedPurchasedPacks && cachedPurchasedPacks.length>0) {
+        // we have memory cache with data
+        return cachedPurchasedPacks;
+      }
+    }
+
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 12000);
+      // HARDCODED_SHEET_URL is defined in main script - use it
+      const sheetUrl = (typeof HARDCODED_SHEET_URL !== 'undefined' ? HARDCODED_SHEET_URL : window.HARDCODED_SHEET_URL || "https://script.google.com/macros/s/AKfycbxZmmaWlqrx9ydYVfO3XkZKh25Oxa_k0XiLNBPbEVEBOwZTlE2qPxF6OEoU-I9oJzLj/exec");
+      const url = `${sheetUrl}?uid=${encodeURIComponent(uid)}&t=${Date.now()}&_=${Math.random()}`;
+      console.log('Fetching purchased packs from sheet:', url);
+      const response = await fetch(url, { 
+        signal: controller.signal, 
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' }
+      });
+      clearTimeout(timeout);
+      if (!response.ok) throw new Error('HTTP '+response.status);
+      const data = await response.json();
+      console.log('Sheet response:', data);
+      let packs = data.purchased || data.packs || data.data || [];
+      if (!Array.isArray(packs)) {
+        // handle object case { "60": true } etc
+        if(typeof packs === 'object') packs = Object.keys(packs);
+        else packs = [packs];
+      }
+      packs = packs.map(p => String(p).trim()).filter(Boolean);
+      if(typeof cachedPurchasedPacks !== 'undefined') cachedPurchasedPacks = packs;
+      window._lastPurchasedPacks = packs;
+      setCachedPacks(uid, packs);
+      return packs;
+    } catch (e) {
+      console.warn('fetchPurchasedPacks failed, trying cache fallback', e);
+      try {
+        const ls = getCachedPacks(uid);
+        if (ls) {
+          window._lastPurchasedPacks = ls;
+          return ls;
+        }
+      } catch(e2){}
+      if(typeof cachedPurchasedPacks !== 'undefined' && cachedPurchasedPacks) return cachedPurchasedPacks;
+      return [];
+    }
+  };
+  // Also assign to local scope if needed
+  if(typeof fetchPurchasedPacks !== 'undefined') {
+    fetchPurchasedPacks = window.fetchPurchasedPacks;
+  }
+
+  // FIXED applyPurchasedFilter - robust UC normalization + re-apply after render
+  window.applyPurchasedFilter = function(purchasedPacks) {
+    if (!Array.isArray(purchasedPacks)) purchasedPacks = [];
+    
+    const normalizeUc = (v) => {
+      if (v==null) return '';
+      let s = String(v).trim();
+      // Extract first number before +, space, or UC text
+      s = s.split('+')[0].trim();
+      s = s.split(' ')[0].trim();
+      // Remove non-digits except keep as is
+      return s;
+    };
+
+    const normalizedPurchased = purchasedPacks.map(normalizeUc).filter(Boolean);
+    window._lastPurchasedPacks = normalizedPurchased;
+
+    const trialPacksConfig = (window.siteConfig && window.siteConfig.trialPacks) ? window.siteConfig.trialPacks : [];
+    const trialUcValues = trialPacksConfig.map(p => normalizeUc(p.uc));
+    
+    console.log('[FIX] apply filter - purchased:', normalizedPurchased, ' trialValues:', trialUcValues);
+
+    if (trialUcValues.length === 0) {
+      // Config not loaded yet, save for later re-apply
+      console.log('[FIX] trial config empty, deferring filter');
+      return { hasPurchasedAnyTrial: false, purchasedPacks: normalizedPurchased };
+    }
+
+    const hasPurchasedAnyTrial = normalizedPurchased.some(up => trialUcValues.includes(up));
+
+    document.querySelectorAll('.pack-card').forEach(card => {
+      card.classList.remove('purchased', 'selected');
+      const cm = card.querySelector('.check-mark');
+      if (cm) cm.remove();
+      try {
+        const packData = JSON.parse(decodeURIComponent(card.dataset.pack));
+        const packUcNorm = normalizeUc(packData.uc);
+        const isTrialPack = trialUcValues.includes(packUcNorm);
+        const isSpecificallyPurchased = normalizedPurchased.includes(packUcNorm);
+        
+        // If ANY trial purchased, hide ALL trials (one trial per UID rule)
+        // OR if this specific trial UC purchased, hide it
+        if (isTrialPack && (hasPurchasedAnyTrial || isSpecificallyPurchased)) {
+          card.classList.add('purchased');
+        }
+      } catch(e){}
+    });
+
+    const trialTitleWrap = document.getElementById('trialPackTitleWrap');
+    const trialGrid = document.getElementById('trialPacksGrid');
+    let visibleCount = 0;
+    document.querySelectorAll('#trialPacksGrid .pack-card').forEach(card => { 
+      if(!card.classList.contains('purchased')) visibleCount++; 
+    });
+    
+    if (visibleCount === 0 && trialPacksConfig.length > 0) {
+      if(trialTitleWrap) trialTitleWrap.style.display = 'none';
+      if(trialGrid) trialGrid.style.display = 'none';
+    } else {
+      if(trialTitleWrap) {
+        const shouldShow = typeof getTgl === 'function' ? getTgl('showLblTrial') : true;
+        trialTitleWrap.style.display = shouldShow ? 'flex' : 'none';
+      }
+      if(trialGrid) trialGrid.style.display = 'grid';
+    }
+
+    return { hasPurchasedAnyTrial, purchasedPacks: normalizedPurchased };
+  };
+  if(typeof applyPurchasedFilter !== 'undefined') {
+    applyPurchasedFilter = window.applyPurchasedFilter;
+  }
+
+  // Patch renderSitePacks to auto re-apply filter after each render
+  if(window.renderSitePacks) {
+    const origRender = window.renderSitePacks;
+    window.renderSitePacks = function() {
+      origRender();
+      // After render, apply filter if we have data
+      if(window._lastPurchasedPacks && window._lastPurchasedPacks.length>0) {
+        console.log('[FIX] Re-applying filter after renderSitePacks');
+        setTimeout(() => {
+          try { window.applyPurchasedFilter(window._lastPurchasedPacks); } catch(e){}
+        }, 50);
+      }
+    };
+  }
+
+  // Patch onVerifySuccess to ALWAYS clear old cache and force fresh fetch
+  if(typeof onVerifySuccess !== 'undefined') {
+    const origSuccess = onVerifySuccess;
+    window.onVerifySuccess = function(pid, playerName) {
+      // Clear cache for this UID to avoid stale []
+      try { 
+        localStorage.removeItem('ft_packs_' + pid);
+        console.log('[FIX] Cleared cache for UID', pid);
+      } catch(e){}
+      if(typeof cachedPurchasedPacks !== 'undefined') cachedPurchasedPacks = null;
+      window._lastPurchasedPacks = null;
+      if(typeof packsPreloadPromise !== 'undefined') packsPreloadPromise = null;
+      
+      // Call original
+      const result = origSuccess(pid, playerName);
+      
+      // Force fresh fetch with no cache
+      try {
+        if(typeof packsPreloadPromise !== 'undefined') {
+          packsPreloadPromise = window.fetchPurchasedPacks(pid, { useCache: false }).then(packs => {
+            if(typeof cachedPurchasedPacks !== 'undefined') cachedPurchasedPacks = packs;
+            window._lastPurchasedPacks = packs;
+            console.log('[FIX] Preloaded packs (no-cache):', packs);
+            // Don't apply yet, will apply on step2
+            return packs;
+          }).catch(e => {
+            console.error('[FIX] Preload error', e);
+            if(typeof cachedPurchasedPacks !== 'undefined') cachedPurchasedPacks = [];
+            return [];
+          });
+        }
+      } catch(e){}
+      
+      return result;
+    };
+    onVerifySuccess = window.onVerifySuccess;
+  }
+
+  // Patch proceedToPackSelection to force fresh fetch
+  if(typeof proceedToPackSelection !== 'undefined') {
+    const origProceed = proceedToPackSelection;
+    window.proceedToPackSelection = async function() {
+      // Call original logic but ensure fresh fetch
+      const pid = (typeof uidInput !== 'undefined' && uidInput) ? uidInput.value.trim() : (typeof currentUid !== 'undefined' ? currentUid : '');
+      if(pid) {
+        // Force fresh fetch before showing packs
+        try {
+          const fresh = await window.fetchPurchasedPacks(pid, { useCache: false });
+          window._lastPurchasedPacks = fresh;
+          if(typeof cachedPurchasedPacks !== 'undefined') cachedPurchasedPacks = fresh;
+        } catch(e){}
+      }
+      // Now call original which will show step2 and apply
+      return await origProceed();
+    };
+    proceedToPackSelection = window.proceedToPackSelection;
+  }
+
+  console.log('[FIX] Trial packs fix applied successfully');
+})();
+</script>
+
 </body>
 </html>
