@@ -2487,7 +2487,44 @@
     }
   </script>
 
-  <script type="module">
+  
+<script>
+// EARLY DEFAULT - ensures packs always available even before Firebase
+window.__FALLBACK_PACKS = {
+  trialPacks: [
+    { uc: 13, price: 5, rzpLinks: [], discountText: "NEW", isLimited: false, secondWebhook: false },
+    { uc: 60, price: 75, rzpLinks: [], discountText: "", isLimited: false, secondWebhook: false },
+    { uc: 120, price: 150, rzpLinks: [], discountText: "", isLimited: false, secondWebhook: false }
+  ],
+  bulkPacks: [
+    { uc: 300, price: 380, rzpLinks: [], discountText: "", isLimited: false, secondWebhook: false },
+    { uc: 600, price: 750, rzpLinks: [], discountText: "POPULAR", isLimited: false, secondWebhook: false },
+    { uc: 1500, price: 1900, rzpLinks: [], discountText: "", isLimited: false, secondWebhook: false },
+    { uc: 1800, price: 2300, rzpLinks: [], discountText: "", isLimited: false, secondWebhook: false },
+    { uc: 3000, price: 3800, rzpLinks: [], discountText: "BEST VALUE", isLimited: false, secondWebhook: false },
+    { uc: 4200, price: 5300, rzpLinks: [], discountText: "", isLimited: false, secondWebhook: false },
+    { uc: 6000, price: 7500, rzpLinks: [], discountText: "", isLimited: false, secondWebhook: false }
+  ]
+};
+if(!window.siteConfig) {
+  window.siteConfig = { trialPacks: window.__FALLBACK_PACKS.trialPacks, bulkPacks: window.__FALLBACK_PACKS.bulkPacks };
+}
+if(window.siteConfig && (!window.siteConfig.trialPacks || window.siteConfig.trialPacks.length===0)) {
+  window.siteConfig.trialPacks = window.__FALLBACK_PACKS.trialPacks;
+}
+if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkPacks.length===0)) {
+  window.siteConfig.bulkPacks = window.__FALLBACK_PACKS.bulkPacks;
+}
+</script>
+<script type="module">
+    const safeDefault = window.defaultAdminConfig || window.__FALLBACK_PACKS || { 
+      texts:{}, faqs:[], toggles:{}, policies:{}, shopTiming:{}, adminAuth:{}, images:{}, gameInfo:{banners:[]}, audio:{}, 
+      trialPacks: (window.__FALLBACK_PACKS && window.__FALLBACK_PACKS.trialPacks) || [],
+      bulkPacks: (window.__FALLBACK_PACKS && window.__FALLBACK_PACKS.bulkPacks) || []
+    };
+    const defaultAdminConfig = window.defaultAdminConfig || safeDefault;
+
+
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, doc, setDoc, getDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
@@ -2619,7 +2656,7 @@
                     
                 } else {
                     console.log('No Firestore config found, creating from local/default');
-                    if(window.siteConfig) {
+                    if(window.siteConfig && (window.siteConfig.trialPacks || window.siteConfig.bulkPacks)) {
                         window.saveConfigToDB(window.siteConfig);
                     }
                     try { 
@@ -2752,6 +2789,19 @@
     };
 
     window.siteConfig = JSON.parse(localStorage.getItem('ucifyAdminConfigV2')) || defaultAdminConfig;
+    window.defaultAdminConfig = defaultAdminConfig;
+    // FORCE: If localStorage has empty packs, restore from default
+    if(!window.siteConfig.trialPacks || window.siteConfig.trialPacks.length===0) {
+      console.warn('trialPacks empty in localStorage, restoring from default');
+      window.siteConfig.trialPacks = JSON.parse(JSON.stringify(defaultAdminConfig.trialPacks));
+    }
+    if(!window.siteConfig.bulkPacks || window.siteConfig.bulkPacks.length===0) {
+      console.warn('bulkPacks empty in localStorage, restoring from default');
+      window.siteConfig.bulkPacks = JSON.parse(JSON.stringify(defaultAdminConfig.bulkPacks));
+    }
+    // Always save corrected config back
+    try { localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(window.siteConfig)); } catch(e){}
+
     
     // Auto-migrate new object properties safely
     if(!window.siteConfig.faqs) {
@@ -4386,10 +4436,21 @@
         }, 1500);
     }
 
-    window.renderSitePacks = function() {
+        window.renderSitePacks = function() {
         const trialGrid = document.getElementById('trialPacksGrid'); const bulkGrid = document.getElementById('bulkPacksGrid');
         if(!trialGrid || !bulkGrid) return;
         trialGrid.innerHTML = ''; bulkGrid.innerHTML = '';
+        
+        // FALLBACK: ensure packs exist
+        if(!window.siteConfig) window.siteConfig = {};
+        if(!window.siteConfig.trialPacks || window.siteConfig.trialPacks.length===0) {
+          window.siteConfig.trialPacks = (window.defaultAdminConfig && window.defaultAdminConfig.trialPacks) || (window.__FALLBACK_PACKS && window.__FALLBACK_PACKS.trialPacks) || [];
+        }
+        if(!window.siteConfig.bulkPacks || window.siteConfig.bulkPacks.length===0) {
+          window.siteConfig.bulkPacks = (window.defaultAdminConfig && window.defaultAdminConfig.bulkPacks) || (window.__FALLBACK_PACKS && window.__FALLBACK_PACKS.bulkPacks) || [];
+        }
+        console.log('Rendering packs:', window.siteConfig.trialPacks.length, window.siteConfig.bulkPacks.length);
+
         
         const generatePackHTML = (pack) => {
             const badgesHtml = `
@@ -4506,6 +4567,16 @@
           window._tryHideLoader();
         }
       }, 5500);
+      // Force render default packs immediately so step 2 never blank
+      try { 
+        if(!window.siteConfig.trialPacks || window.siteConfig.trialPacks.length===0) {
+          window.siteConfig.trialPacks = (window.defaultAdminConfig && window.defaultAdminConfig.trialPacks) || (window.__FALLBACK_PACKS && window.__FALLBACK_PACKS.trialPacks) || [];
+        }
+        if(!window.siteConfig.bulkPacks || window.siteConfig.bulkPacks.length===0) {
+          window.siteConfig.bulkPacks = (window.defaultAdminConfig && window.defaultAdminConfig.bulkPacks) || (window.__FALLBACK_PACKS && window.__FALLBACK_PACKS.bulkPacks) || [];
+        }
+        window.renderSitePacks(); 
+      } catch(e){ console.log('Initial render error', e); }
       // Try hide if firebase already loaded before DOM
       window._tryHideLoader();
     });
