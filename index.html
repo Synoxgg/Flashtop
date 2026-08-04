@@ -2618,9 +2618,14 @@
                     }, 100);
                     
                 } else {
+                    console.log('No Firestore config found, creating from local/default');
                     if(window.siteConfig) {
                         window.saveConfigToDB(window.siteConfig);
                     }
+                    try { 
+                        if(typeof window.applyUISettings === 'function') window.applyUISettings(); 
+                        if(typeof window.renderSitePacks === 'function') window.renderSitePacks();
+                    } catch(e){ console.log('Render fallback error', e); }
                     window._firebaseConfigLoaded = true;
                     if(window._tryHideLoader) window._tryHideLoader(); else hideInitialLoader();
                 }
@@ -2730,10 +2735,19 @@
             showShipping: true, contentShipping: "1. Delivery Method\nAll deliveries are purely digital. No physical product will be shipped to your address.\n\n2. Delivery Time\nUC is typically credited to your account instantly or within 10-15 minutes. In case of server delays, please allow up to 24 hours for the transaction to reflect in your BGMI account.",
             showContact: true, contentContact: "Get in Touch\nIf you face any issues with your order, please contact our support team. Have your Order ID and Transaction ID ready.\n\n1. Business Name: FlashTOP (INDIA) PRIVATE LIMITED\n\n2. Email Support: flashtop.support@gmail.com\n\n3. Registered Address: 102, Plot No 54, Vohra Chamber, Sect 19c, Vashi, Navi Mumbai, Maharashtra, 400705\n\n4. Business Address: 102, Plot No 54, Vohra Chamber, Sect 19c, Vashi, Navi Mumbai, Maharashtra, 400705"
         },
-        trialPacks: [ { uc: 13, price: 5, rzpLinks: [], discountText: "", isLimited: false, secondWebhook: false } ],
+        trialPacks: [ 
+            { uc: 13, price: 5, rzpLinks: [], discountText: "NEW", isLimited: false, secondWebhook: false },
+            { uc: 60, price: 75, rzpLinks: [], discountText: "", isLimited: false, secondWebhook: false },
+            { uc: 120, price: 150, rzpLinks: [], discountText: "", isLimited: false, secondWebhook: false }
+        ],
         bulkPacks: [
-            { uc: 1800, price: 300, rzpLinks: [], discountText: "", isLimited: false, secondWebhook: false },
-            { uc: 4200, price: 600, rzpLinks: [], discountText: "", isLimited: false, secondWebhook: false }
+            { uc: 300, price: 380, rzpLinks: [], discountText: "", isLimited: false, secondWebhook: false },
+            { uc: 600, price: 750, rzpLinks: [], discountText: "POPULAR", isLimited: false, secondWebhook: false },
+            { uc: 1500, price: 1900, rzpLinks: [], discountText: "", isLimited: false, secondWebhook: false },
+            { uc: 1800, price: 2300, rzpLinks: [], discountText: "", isLimited: false, secondWebhook: false },
+            { uc: 3000, price: 3800, rzpLinks: [], discountText: "BEST VALUE", isLimited: false, secondWebhook: false },
+            { uc: 4200, price: 5300, rzpLinks: [], discountText: "", isLimited: false, secondWebhook: false },
+            { uc: 6000, price: 7500, rzpLinks: [], discountText: "", isLimited: false, secondWebhook: false }
         ]
     };
 
