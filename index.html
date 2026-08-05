@@ -1025,12 +1025,13 @@
     .modal-body-policy { white-space: pre-wrap; font-family: inherit; line-height: 1.9; }
 
     .toast {
-      position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px);
+      position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-150px);
       background: #1a1a1a; border: 1px solid var(--success); padding: 12px 24px;
       border-radius: 50px; display: flex; align-items: center; gap: 10px; z-index: 100;
       transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+      opacity: 0; visibility: hidden; pointer-events: none;
     }
-    .toast.show { transform: translateX(-50%) translateY(0); }
+    .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; visibility: visible; pointer-events: auto; }
     .toast i { color: var(--success); }
 
     .social-proof {
