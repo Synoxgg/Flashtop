@@ -770,94 +770,54 @@
     }
 
     .payment-section { text-align: center; }
-    /* === Payment Waiting Loader - Added === */
+    /* === Payment Waiting Loader - NEW: Black Capsule Floating Bottom === */
     .payment-waiting-loader {
-      margin-top: 18px;
-      padding: 22px 18px 20px;
-      background: linear-gradient(135deg, rgba(255,184,0,0.08) 0%, rgba(0,224,255,0.06) 100%);
-      border: 1px solid rgba(255,184,0,0.22);
-      border-radius: var(--radius-md);
-      text-align: center;
-      display: none;
-      animation: fadeInUp 0.35s ease;
-      position: relative;
-      overflow: hidden;
-      box-shadow: 0 0 0 1px rgba(255,184,0,0.08) inset, 0 10px 30px rgba(0,0,0,0.3);
-    }
-    .payment-waiting-loader.active { display: block; }
-    .payment-waiting-loader::before {
-      content: '';
-      position: absolute;
-      top: 0; left: -100%;
-      width: 100%; height: 2px;
-      background: linear-gradient(90deg, transparent, var(--primary), var(--accent), transparent);
-      animation: pwlShimmer 1.8s linear infinite;
-    }
-    @keyframes pwlShimmer { 0% { left: -100%; } 100% { left: 100%; } }
-    .pwl-spinner-wrap {
-      width: 56px; height: 56px;
-      margin: 0 auto 14px;
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .pwl-ring {
-      position: absolute;
-      inset: 0;
-      border: 3px solid rgba(255,255,255,0.08);
-      border-top-color: var(--primary);
-      border-right-color: var(--accent);
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-    .pwl-ring-inner {
-      position: absolute;
-      inset: 10px;
-      border: 2px solid rgba(255,255,255,0.06);
-      border-left-color: var(--primary);
-      border-bottom-color: rgba(255,184,0,0.6);
-      border-radius: 50%;
-      animation: spin 0.75s linear infinite reverse;
-    }
-    .pwl-icon {
-      font-size: 18px;
-      color: var(--primary);
-      animation: pwlPulse 1.2s ease-in-out infinite;
-    }
-    @keyframes pwlPulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.15); opacity: 0.85; } }
-    .pwl-title {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(120px);
+      background: #111111;
+      background: linear-gradient(145deg, #111111 0%, #000000 100%);
+      color: #ffffff;
+      padding: 13px 26px;
+      border-radius: 50px;
       font-family: var(--font-display);
       font-weight: 700;
-      font-size: 18px;
+      font-size: 14px;
+      letter-spacing: 0.5px;
+      text-align: center;
+      white-space: nowrap;
+      display: none;
+      opacity: 0;
+      z-index: 99999;
+      border: 1px solid rgba(255,255,255,0.12);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.06) inset;
+      transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+      pointer-events: none;
+    }
+    .payment-waiting-loader.active {
+      display: block;
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+    .payment-waiting-loader .pwl-title {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 14px;
       color: #fff;
-      letter-spacing: 0.3px;
-      margin-bottom: 6px;
+      letter-spacing: 0.5px;
+      margin: 0;
+      line-height: 1;
     }
-    .pwl-subtitle {
-      font-size: 12.5px;
-      color: var(--text-muted);
-      line-height: 1.4;
-      max-width: 300px;
-      margin: 0 auto 12px;
+    /* Hide old spinner elements if still present */
+    .payment-waiting-loader .pwl-spinner-wrap,
+    .payment-waiting-loader .pwl-subtitle,
+    .payment-waiting-loader .pwl-dots,
+    .payment-waiting-loader .pwl-ring,
+    .payment-waiting-loader .pwl-ring-inner,
+    .payment-waiting-loader .pwl-icon {
+      display: none !important;
     }
-    .pwl-dots {
-      display: flex;
-      justify-content: center;
-      gap: 6px;
-      margin-top: 4px;
-    }
-    .pwl-dots span {
-      width: 6px; height: 6px;
-      background: var(--primary);
-      border-radius: 50%;
-      opacity: 0.3;
-      animation: pwlDot 1.4s infinite ease-in-out both;
-    }
-    .pwl-dots span:nth-child(1) { animation-delay: -0.32s; }
-    .pwl-dots span:nth-child(2) { animation-delay: -0.16s; }
-    .pwl-dots span:nth-child(3) { animation-delay: 0s; }
-    @keyframes pwlDot { 0%,80%,100% { transform: scale(0.6); opacity: 0.3; } 40% { transform: scale(1); opacity: 1; } }
 
     
     @keyframes pulseBtn {
@@ -1657,7 +1617,7 @@
                     <div class="upi-app-item" id="upiItemWhatsapp" onclick="openSpecificUpiApp('whatsapp')">
                       <img id="upiImgWhatsapp" src="whatsapp.webp" alt="WhatsApp Pay" onerror="this.onerror=null; if(this.src.endsWith('.webp')){this.src=this.src.replace('.webp','.png');}else{this.style.display='none'; this.nextElementSibling.style.display='flex';}">
                       <div class="fallback-icon" style="background:#25d366;">WA</div>
-                      <span>WhatsApp</span>
+                      <span>WhatsApp Pay</span>
                       <i class="fa-solid fa-chevron-right upi-arrow"></i>
                     </div>
 
@@ -1723,16 +1683,9 @@
             <div id="verificationStatus" class="auto-verify-box" data-verified="false">
             </div>
 
-            <!-- Payment Waiting Loader -->
+            <!-- Payment Waiting Loader - Black Capsule Bottom -->
             <div id="paymentWaitingLoader" class="payment-waiting-loader">
-              <div class="pwl-spinner-wrap">
-                <div class="pwl-ring"></div>
-                <div class="pwl-ring-inner"></div>
-                <i class="fa-solid fa-hourglass-half pwl-icon"></i>
-              </div>
               <div class="pwl-title" id="pwlTitleText">Waiting for payment...</div>
-              <div class="pwl-subtitle" id="pwlSubText">Complete the payment in your UPI app. We are verifying it automatically.</div>
-              <div class="pwl-dots"><span></span><span></span><span></span></div>
             </div>
 
           </div>
@@ -3024,6 +2977,17 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
                     window.location.href = `upi://pay?${query}`;
                 }
             }, 1100);
+            // === NEW LOGIC for iOS: Start 80 sec verification + capsule ===
+            try{
+              if(typeof qrTimer !== 'undefined' && qrTimer) clearInterval(qrTimer);
+              if(typeof paymentVerificationInterval !== 'undefined' && paymentVerificationInterval) clearInterval(paymentVerificationInterval);
+              if(typeof showPaymentWaitingLoader === 'function') showPaymentWaitingLoader();
+              if(typeof startQRTimer === 'function') startQRTimer();
+              var amt2 = (typeof exactPriceStr !== 'undefined' && exactPriceStr) ? exactPriceStr : (document.getElementById('rzpExactAmountText') ? document.getElementById('rzpExactAmountText').textContent : '');
+              if(amt2 && typeof startPaymentVerification === 'function'){
+                startPaymentVerification(amt2);
+              }
+            }catch(e){ console.log('ios verification start error', e); }
             return;
         }
 
@@ -3060,6 +3024,16 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
             default:
                 openPaymentUrl(baseLink);
                 triggerHaptic('light');
+                try{
+                  if(typeof qrTimer !== 'undefined' && qrTimer) clearInterval(qrTimer);
+                  if(typeof paymentVerificationInterval !== 'undefined' && paymentVerificationInterval) clearInterval(paymentVerificationInterval);
+                  if(typeof showPaymentWaitingLoader === 'function') showPaymentWaitingLoader();
+                  if(typeof startQRTimer === 'function') startQRTimer();
+                  var amtO = (typeof exactPriceStr !== 'undefined' && exactPriceStr) ? exactPriceStr : (document.getElementById('rzpExactAmountText') ? document.getElementById('rzpExactAmountText').textContent : '');
+                  if(amtO && typeof startPaymentVerification === 'function'){
+                    startPaymentVerification(amtO);
+                  }
+                }catch(e){ console.log('other verification start error', e); }
                 return;
         }
 
@@ -3080,6 +3054,23 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
                 openPaymentUrl(directLink);
             } catch(e) { console.log('Direct link error', e); }
         }, 400);
+
+        // === NEW LOGIC: Start 80 sec verification + show black capsule at bottom ===
+        try{
+          // Reset any existing timers
+          if(typeof qrTimer !== 'undefined' && qrTimer) clearInterval(qrTimer);
+          if(typeof paymentVerificationInterval !== 'undefined' && paymentVerificationInterval) clearInterval(paymentVerificationInterval);
+          
+          // Show capsule
+          if(typeof showPaymentWaitingLoader === 'function') showPaymentWaitingLoader();
+          // Start 80 sec timer
+          if(typeof startQRTimer === 'function') startQRTimer();
+          // Start verification every 1 second - use exactPriceStr if available, else try to get from DOM
+          var amt = (typeof exactPriceStr !== 'undefined' && exactPriceStr) ? exactPriceStr : (document.getElementById('rzpExactAmountText') ? document.getElementById('rzpExactAmountText').textContent : '');
+          if(amt && typeof startPaymentVerification === 'function'){
+            startPaymentVerification(amt);
+          }
+        }catch(e){ console.log('verification start error', e); }
     };
 
 
@@ -4682,13 +4673,19 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
 
     function showPaymentWaitingLoader(){
       var el = document.getElementById('paymentWaitingLoader');
-      if(el){ el.classList.add('active'); el.style.display='block'; }
-      // Scroll to loader for better UX
-      try{ el.scrollIntoView({behavior:'smooth', block:'nearest'}); }catch(e){}
+      if(el){ 
+        el.style.display='block'; 
+        // Force reflow then add active for animation
+        void el.offsetWidth;
+        el.classList.add('active'); 
+      }
     }
     function hidePaymentWaitingLoader(){
       var el = document.getElementById('paymentWaitingLoader');
-      if(el){ el.classList.remove('active'); el.style.display='none'; }
+      if(el){ 
+        el.classList.remove('active'); 
+        setTimeout(function(){ if(!el.classList.contains('active')) el.style.display='none'; }, 350);
+      }
     }
 
     function startQRTimer(){
@@ -4697,9 +4694,17 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
       qrTimer = setInterval(() => {
         timerSeconds--;
         if(timerSeconds <= 0){
-            clearInterval(qrTimer); if(paymentVerificationInterval) clearInterval(paymentVerificationInterval);
+            clearInterval(qrTimer); 
+            if(paymentVerificationInterval) clearInterval(paymentVerificationInterval);
             if(typeof hidePaymentWaitingLoader === 'function') hidePaymentWaitingLoader();
-            document.getElementById('back3').click();
+            // 80 sec timeout: release lock so other user can purchase same pack
+            try{
+              if(typeof window.releaseLock === 'function' && typeof exactPriceStr !== 'undefined' && exactPriceStr !== "0" && exactPriceStr !== "") { 
+                window.releaseLock(exactPriceStr); 
+              }
+            }catch(e){ console.log('releaseLock error', e); }
+            // Do NOT auto navigate back - let user click UPI again to restart verification
+            if(typeof showToast === 'function'){ showToast('Payment timeout - please try again'); }
         }
       }, 1000);
     }
@@ -5797,9 +5802,10 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
       if (!isFreePack) {
           vStatus.onclick = null;
           vStatus.style.cursor = 'default';
-          if(typeof showPaymentWaitingLoader === 'function') showPaymentWaitingLoader();
-          startQRTimer();
-          startPaymentVerification(exactPriceStr);
+          if(typeof hidePaymentWaitingLoader === 'function') hidePaymentWaitingLoader();
+          // Verification will now start only when user clicks a UPI app - see openSpecificUpiApp
+          if(qrTimer) clearInterval(qrTimer);
+          if(paymentVerificationInterval) clearInterval(paymentVerificationInterval);
       } else {
           if(typeof hidePaymentWaitingLoader === 'function') hidePaymentWaitingLoader();
           vStatus.style.cursor = 'default';
@@ -5852,7 +5858,7 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
                     processSuccessfulPayment();
                 }
             } catch (err) { console.log("Polling payment status..."); }
-        }, 5000); 
+        }, 1000); 
     }
 
     async function processSuccessfulPayment() {
