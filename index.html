@@ -770,16 +770,16 @@
     }
 
     .payment-section { text-align: center; }
-    /* === Payment Waiting Loader - NEW: Black Capsule Floating Bottom === */
+    /* === Payment Waiting Loader - NEW: Black Capsule Floating Bottom with Spinner === */
     .payment-waiting-loader {
       position: fixed;
-      bottom: 24px;
+      bottom: 80px;
       left: 50%;
       transform: translateX(-50%) translateY(120px);
       background: #111111;
       background: linear-gradient(145deg, #111111 0%, #000000 100%);
       color: #ffffff;
-      padding: 13px 26px;
+      padding: 12px 22px;
       border-radius: 50px;
       font-family: var(--font-display);
       font-weight: 700;
@@ -789,14 +789,16 @@
       white-space: nowrap;
       display: none;
       opacity: 0;
-      z-index: 99999;
+      z-index: 1000;
       border: 1px solid rgba(255,255,255,0.12);
       box-shadow: 0 10px 30px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.06) inset;
-      transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+      transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease, bottom 0.35s cubic-bezier(0.25,0.8,0.25,1);
       pointer-events: none;
+      align-items: center;
+      gap: 10px;
     }
     .payment-waiting-loader.active {
-      display: block;
+      display: flex;
       transform: translateX(-50%) translateY(0);
       opacity: 1;
     }
@@ -808,6 +810,19 @@
       letter-spacing: 0.5px;
       margin: 0;
       line-height: 1;
+    }
+    .payment-waiting-loader .pwl-dot-spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.25);
+      border-top-color: #ffffff;
+      border-radius: 50%;
+      animation: pwlSpin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes pwlSpin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
     /* Hide old spinner elements if still present */
     .payment-waiting-loader .pwl-spinner-wrap,
@@ -1683,8 +1698,9 @@
             <div id="verificationStatus" class="auto-verify-box" data-verified="false">
             </div>
 
-            <!-- Payment Waiting Loader - Black Capsule Bottom -->
+            <!-- Payment Waiting Loader - Black Capsule Bottom with Spinner -->
             <div id="paymentWaitingLoader" class="payment-waiting-loader">
+              <div class="pwl-dot-spinner"></div>
               <div class="pwl-title" id="pwlTitleText">Waiting for payment...</div>
             </div>
 
@@ -4644,19 +4660,26 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
     window.addEventListener('scroll', function(){
       if(!socialProofScrollTicking){
         requestAnimationFrame(function(){
-          updateSocialProofPosition();
+          if(typeof updateSocialProofPosition === 'function') updateSocialProofPosition();
+          if(typeof updatePaymentWaitingPosition === 'function') updatePaymentWaitingPosition();
           socialProofScrollTicking = false;
         });
         socialProofScrollTicking = true;
       }
     }, {passive: true});
-    window.addEventListener('resize', updateSocialProofPosition, {passive: true});
-    // Also observe footer size changes
+    window.addEventListener('resize', function(){
+      if(typeof updateSocialProofPosition === 'function') updateSocialProofPosition();
+      if(typeof updatePaymentWaitingPosition === 'function') updatePaymentWaitingPosition();
+    }, {passive: true});
+    // Also observe footer size changes for both popups
     if('ResizeObserver' in window){
       try{
         const footerEl = document.querySelector('.site-footer');
         if(footerEl){
-          const ro = new ResizeObserver(updateSocialProofPosition);
+          const ro = new ResizeObserver(function(){
+            if(typeof updateSocialProofPosition === 'function') updateSocialProofPosition();
+            if(typeof updatePaymentWaitingPosition === 'function') updatePaymentWaitingPosition();
+          });
           ro.observe(footerEl);
         }
       }catch(e){}
@@ -4671,10 +4694,34 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
     }
     animateLiveOrders();
 
+    function updatePaymentWaitingPosition(){
+      const capsule = document.getElementById('paymentWaitingLoader');
+      const footer = document.querySelector('.site-footer');
+      const proof = document.getElementById('socialProof');
+      if(!capsule || !footer) return;
+      const footerRect = footer.getBoundingClientRect();
+      const viewportH = window.innerHeight;
+      let baseBottom = 80; // above social-proof popup (which is at 20px)
+      // If social-proof is visible, ensure capsule is above it
+      if(proof && proof.style.display !== 'none' && proof.style.display !== ''){
+        const proofRect = proof.getBoundingClientRect();
+        // proof is fixed, but we can just keep baseBottom as 80 to stay above it
+        baseBottom = 80;
+      }
+      if(footerRect.top < viewportH){
+        const overlap = viewportH - footerRect.top;
+        const extraGap = 16;
+        capsule.style.bottom = (overlap + extraGap + 60) + 'px'; // 60 keeps it above footer text, extraGap avoids touching
+      } else {
+        capsule.style.bottom = baseBottom + 'px';
+      }
+    }
+
     function showPaymentWaitingLoader(){
       var el = document.getElementById('paymentWaitingLoader');
       if(el){ 
-        el.style.display='block'; 
+        el.style.display='flex'; 
+        if(typeof updatePaymentWaitingPosition === 'function') updatePaymentWaitingPosition();
         // Force reflow then add active for animation
         void el.offsetWidth;
         el.classList.add('active'); 
