@@ -920,19 +920,27 @@
 
     .success-screen { text-align: center; }
     .success-icon { 
-      font-size: 60px; 
-      color: var(--success); 
-      margin-bottom: 20px;
-      text-shadow: 0 0 30px rgba(0,255,157,0.5);
+      margin-bottom: 18px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
       animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
     @keyframes popIn { 0%{transform: scale(0);} 100%{transform: scale(1);} }
     
     .success-title {
-      font-family: var(--font-display);
+      font-family: 'Outfit', sans-serif;
+      font-weight: 800;
       font-size: 28px;
-      color: #fff;
-      margin-bottom: 8px; 
+      line-height: 1.15;
+      background: linear-gradient(100deg, #ffffff 20%, #FFB800 80%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 2px 12px rgba(255,184,0,0.25));
+      letter-spacing: 0.3px;
+      margin-bottom: 18px;
+      text-transform: uppercase;
     }
 
     .game-loader-wrap { margin: 30px 0; }
@@ -953,6 +961,85 @@
       transition: width 1s linear;
     }
     .timer-text { font-family: monospace; color: var(--primary); font-size: 16px; }
+    
+    
+    /* NEW: Transfer Visual - FlashTOP -> UC -> BGMI */
+    .transfer-visual {
+      margin: 10px auto 22px auto;
+      max-width: 360px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 14px 16px 10px 16px;
+    }
+    .tv-logos-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      position: relative;
+    }
+    .tv-logo {
+      width: 42px;
+      height: 42px;
+      object-fit: contain;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      padding: 4px;
+      flex-shrink: 0;
+    }
+    .tv-track-wrap {
+      flex: 1;
+      height: 42px;
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .tv-track-line {
+      width: 100%;
+      height: 2px;
+      background: repeating-linear-gradient(90deg, rgba(255,184,0,0.6) 0 8px, transparent 8px 12px);
+      position: relative;
+    }
+    .tv-track-line::after {
+      content: '▶';
+      position: absolute;
+      right: -2px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 10px;
+      color: var(--primary);
+    }
+    .tv-uc-moving {
+      position: absolute;
+      width: 28px;
+      height: 28px;
+      object-fit: contain;
+      left: 0;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      filter: drop-shadow(0 0 8px rgba(255,184,0,0.7));
+      animation: ucTravel 2.2s linear infinite;
+      z-index: 2;
+    }
+    @keyframes ucTravel {
+      0% { left: 0%; opacity: 0; transform: translate(-50%, -50%) scale(0.7); }
+      10% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+      90% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+      100% { left: 100%; opacity: 0; transform: translate(-50%, -50%) scale(0.7); }
+    }
+    .tv-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 6px;
+      font-size: 10px;
+      color: var(--text-muted);
+      font-family: var(--font-display);
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      padding: 0 2px;
+    }
     
     .receipt-box {
       background: #000;
@@ -1718,19 +1805,33 @@
     <!-- STEP 4: SUCCESS -->
     <div id="step4" class="step">
       <div class="step-content success-screen">
-        <div class="success-icon"><i class="fa-regular fa-circle-check"></i></div>
+        <div class="success-icon"><img src="order-confirm.webp" alt="Order Confirmed" id="orderConfirmImg" style="width:130px; height:auto; max-width:180px; filter: drop-shadow(0 0 24px rgba(255,184,0,0.35)); animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);" onerror="this.style.display='none'; this.parentElement.innerHTML='<i class=\'fa-regular fa-circle-check\' style=\'font-size:60px; color:var(--success);\'></i>'"></div>
         <h2 class="success-title" id="dispSuccessTitle">UC Purchased successfully</h2>
-        <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px;" id="dispStep4Subtitle">UC will be credited instantly or within 7 minutes.</p>
+        <!-- NEW: FlashTOP -> UC -> BGMI Travel Animation -->
+        <div class="transfer-visual" id="transferVisual">
+            <div class="tv-logos-row">
+                <img src="flashtop.webp" id="tvFlashLogo" alt="FlashTOP" class="tv-logo" onerror="this.src='flashtop.webp'">
+                <div class="tv-track-wrap">
+                    <div class="tv-track-line"></div>
+                    <img id="tvUcIcon" src="uc-logo.webp" alt="UC" class="tv-uc-moving" draggable="false">
+                </div>
+                <img src="bgmi.webp" id="tvBgmiLogo" alt="BGMI" class="tv-logo" onerror="this.src='bgmi.webp'">
+            </div>
+            <div class="tv-labels"><span>FlashTOP</span><span>BGMI Account</span></div>
+        </div>
+
+        
         
         <div class="game-loader-wrap" id="gameLoaderWrap">
             <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
                 <span class="delivery-msg" id="deliveryMsg">Connecting to BGMI Servers...</span>
-                <span class="timer-text" id="deliveryTimer">07:00</span>
+                <span class="timer-text" id="deliveryTimer" style="font-weight:700; letter-spacing:0.5px;">0%</span>
             </div>
             <div class="game-bar-bg">
                 <div class="game-bar-fill" id="gameBarFill"></div>
             </div>
         </div>
+        <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 22px; margin-top: -12px; line-height:1.4;" id="dispStep4Subtitle">Your UC will be credited once the progress reaches 100%.</p>
 
         <div id="finalOrderDetailsTile" style="background: rgba(255,255,255,0.05); border: 1px solid var(--surface-border); border-radius: var(--radius-md); padding: 15px; margin-bottom: 20px; text-align: left;">
             <div style="display: flex; justify-content: space-between; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed rgba(255,255,255,0.1);">
@@ -1738,7 +1839,7 @@
                 <span id="finalUidVal" style="color: #fff; font-weight: 600; font-family: var(--font-display); font-size: 15px;">--</span>
             </div>
             <div style="display: flex; justify-content: space-between; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed rgba(255,255,255,0.1);">
-                <span style="color: var(--text-muted); font-size: 13px;" id="dispFinalLblIgn">BGMI Username</span>
+                <span style="color: var(--text-muted); font-size: 13px;" id="dispFinalLblIgn">BGMI ID Name</span>
                 <span id="finalIgnVal" style="color: #fff; font-weight: 600; font-family: var(--font-display); font-size: 15px;">--</span>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -1770,8 +1871,9 @@
           <div class="receipt-row"><span class="receipt-label" id="dispLblIgn">IGN</span><span class="receipt-value" id="receipt-ign">--</span></div>
           <div class="receipt-row" style="border-bottom: 0; padding-bottom: 0; margin-bottom: 0;"><span class="receipt-label" id="dispLblTime">Time</span><span class="receipt-value" id="receipt-time">--</span></div>
           
-          <div style="text-align: center; margin-top: 15px; border-top: 1px dashed #333; padding-top: 15px;">
-              <img src="signature.webp" id="dispSignature" alt="Authorized Signature" style="max-height: 35px; user-select: none; pointer-events: none;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 15px; border-top: 1px dashed #333; padding-top: 15px; gap:10px;">
+              <span style="font-family: var(--font-display); font-weight:700; font-size:13px; letter-spacing:0.5px; color:#fff; text-transform:uppercase; opacity:0.9;">FlashTOP Officials</span>
+              <img src="signature.webp" id="dispSignature" alt="Authorized Signature" style="max-height: 35px; user-select: none; pointer-events: none; flex-shrink:0;">
           </div>
         </div>
 
@@ -2739,9 +2841,9 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
             
             awaitingTitle: "Awaiting Payment...", cancelBtn: "Go Back", maintenance: "Payment System Under Maintenance",
             
-            successTitle: "UC Purchased successfully", step4Subtitle: "UC will be credited instantly or within 7 minutes.",
+            successTitle: "UC Purchased successfully", step4Subtitle: "Your UC will be credited once the progress reaches 100%.",
             loaderMsg1: "Connecting to BGMI Servers...", loaderMsg2: "Verifying UID & Player Name...", loaderMsg3: "Initiating UC Transfer...", loaderMsg4: "Finalizing Transaction...", loaderMsgDone: "Completed",
-            finalLblUid: "BGMI User ID", finalLblIgn: "BGMI Username", finalLblUc: "UC Credited",
+            finalLblUid: "BGMI User ID", finalLblIgn: "BGMI ID Name", finalLblUc: "UC Credited",
             
             nightModeTitle: "Night Mode Active", nightModeDesc: "Instant delivery paused. UC will be credited after 9:00 AM.",
             finalSuccessMsg: "UC Transfer Complete.", btnNewOrder: "Purchase new pack",
@@ -5961,6 +6063,25 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
             document.getElementById('finalUidVal').textContent = currentUid;
             document.getElementById('finalIgnVal').textContent = currentIgn;
             document.getElementById('finalUcVal').textContent = (typeof getPackDisplayText === 'function') ? getPackDisplayText(selectedPack.uc) : selectedPack.uc;
+            
+            // NEW: Update transfer visual UC icon with selected pack image
+            try {
+                var tvUc = document.getElementById('tvUcIcon');
+                if(tvUc) {
+                    var ucSrc = (selectedPack && selectedPack.packImage) || (window.siteConfig && window.siteConfig.images && window.siteConfig.images.ucLogo) || 'uc-logo.webp';
+                    tvUc.src = ucSrc;
+                }
+                var tvFlash = document.getElementById('tvFlashLogo');
+                if(tvFlash && window.siteConfig && window.siteConfig.images && window.siteConfig.images.logo) {
+                    tvFlash.src = window.siteConfig.images.logo;
+                }
+                var tvBgmi = document.getElementById('tvBgmiLogo');
+                if(tvBgmi && window.siteConfig && window.siteConfig.gameInfo && window.siteConfig.gameInfo.logo) {
+                    tvBgmi.src = window.siteConfig.gameInfo.logo;
+                } else if(tvBgmi && window.siteConfig && window.siteConfig.images && window.siteConfig.images.gameLogo) {
+                    tvBgmi.src = window.siteConfig.images.gameLogo;
+                }
+            } catch(e) { console.log('tv update error', e); }
               
             showStep(4); localStorage.removeItem('bgmiTimerEnd');
             
@@ -5980,23 +6101,27 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
     }
 
     function startDeliveryTimer() {
-        const duration = 420; const timerText = document.getElementById('deliveryTimer'); const fillBar = document.getElementById('gameBarFill'); const msg = document.getElementById('deliveryMsg');
+        const duration = 180; const timerText = document.getElementById('deliveryTimer'); const fillBar = document.getElementById('gameBarFill'); const msg = document.getElementById('deliveryMsg');
         let endTime = localStorage.getItem('bgmiTimerEnd');
         if (!endTime) { endTime = new Date().getTime() + (duration * 1000); localStorage.setItem('bgmiTimerEnd', endTime); }
 
         const timerInterval = setInterval(() => {
             const now = new Date().getTime(); const distance = endTime - now; let secondsLeft = Math.floor(distance / 1000);
             if (distance < 0) {
-                clearInterval(timerInterval); fillBar.style.width = "100%"; msg.textContent = getText('loaderMsgDone');
+                clearInterval(timerInterval); fillBar.style.width = "100%"; if(timerText) timerText.textContent = "100%"; msg.textContent = getText('loaderMsgDone');
                 document.getElementById('gameLoaderWrap').style.display = 'none'; document.getElementById('dispFinalSuccessMsg').style.display = 'block';
                 localStorage.removeItem('bgmiTimerEnd'); createConfetti(); triggerHaptic('success'); return;
             }
-            const m = Math.floor(secondsLeft / 60); const s = secondsLeft % 60; timerText.textContent = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
-            const totalDuration = 420; const percentage = ((totalDuration - secondsLeft) / totalDuration) * 100; fillBar.style.width = percentage + "%";
+            const totalDuration = 180; 
+            const percentage = ((totalDuration - secondsLeft) / totalDuration) * 100; 
+            const clamped = Math.min(100, Math.max(0, percentage));
+            fillBar.style.width = clamped + "%";
+            if(timerText) timerText.textContent = Math.floor(clamped) + "%";
             
-            if(percentage < 20) msg.textContent = getText('loaderMsg1'); if(percentage >= 20 && percentage < 40) msg.textContent = getText('loaderMsg1');
-            if(percentage >= 40 && percentage < 60) msg.textContent = getText('loaderMsg2'); if(percentage >= 60 && percentage < 80) msg.textContent = getText('loaderMsg3');
-            if(percentage >= 80 && percentage < 99) msg.textContent = getText('loaderMsg4');
+            if(clamped < 20) msg.textContent = getText('loaderMsg1'); 
+            if(clamped >= 20 && clamped < 45) msg.textContent = getText('loaderMsg2');
+            if(clamped >= 45 && clamped < 70) msg.textContent = getText('loaderMsg3');
+            if(clamped >= 70 && clamped < 99) msg.textContent = getText('loaderMsg4');
         }, 1000);
     }
     
