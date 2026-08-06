@@ -2660,8 +2660,13 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
         window.firebaseDb = db; 
     } catch(e) {
         console.warn("Firebase config is missing or invalid. Using local storage mode only.");
+        // still wait for DOM, but mark firebase as loaded so loader can hide after UI
         window._firebaseConfigLoaded = true;
-        if(window._tryHideLoader) window._tryHideLoader(); else hideInitialLoader();
+        // ensure UI ready flag if DOM already ready
+        if(window._domReady) {
+            try { if(typeof window.applyUISettings === 'function') window.applyUISettings(); if(typeof window.renderSitePacks === 'function') window.renderSitePacks(); window._uiReady = true; } catch(err){}
+        }
+        if(window._tryHideLoader) window._tryHideLoader();
     }
 
     window.acquireLock = async function(amountStr, currentOrderId) {
@@ -2716,7 +2721,8 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
         } catch (e) {
             console.error("Auth Error:", e);
             window._firebaseConfigLoaded = true;
-            if(window._tryHideLoader) window._tryHideLoader(); else hideInitialLoader();
+            try { if(window._domReady && typeof window.applyUISettings === 'function') { window.applyUISettings(); window.renderSitePacks(); window._uiReady = true; } } catch(err){}
+            if(window._tryHideLoader) window._tryHideLoader();
         }
     };
 
@@ -2749,17 +2755,20 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
                     
                     // Delay render to ensure DOM is fully ready and avoid race conditions
                     setTimeout(() => {
-                        if(typeof window.applyUISettings === 'function') window.applyUISettings();
-                        if(typeof window.renderSitePacks === 'function') window.renderSitePacks();
-                        if(typeof window.renderAdminPacksList === 'function') window.renderAdminPacksList();
-                        if(typeof window.renderAdminRzpLinksList === 'function') window.renderAdminRzpLinksList();
-                        if(typeof window.renderAdminCreatorUidsList === 'function') window.renderAdminCreatorUidsList();
-                        if(typeof window.renderAdminFaqsList === 'function') window.renderAdminFaqsList();
-                        if(typeof window.injectDynamicStatusUI === 'function') window.injectDynamicStatusUI();
-                        // FIXED: Only hide loader AFTER admin changes are applied
+                        try {
+                            if(typeof window.applyUISettings === 'function') window.applyUISettings();
+                            if(typeof window.renderSitePacks === 'function') window.renderSitePacks();
+                            if(typeof window.renderAdminPacksList === 'function') window.renderAdminPacksList();
+                            if(typeof window.renderAdminRzpLinksList === 'function') window.renderAdminRzpLinksList();
+                            if(typeof window.renderAdminCreatorUidsList === 'function') window.renderAdminCreatorUidsList();
+                            if(typeof window.renderAdminFaqsList === 'function') window.renderAdminFaqsList();
+                            if(typeof window.injectDynamicStatusUI === 'function') window.injectDynamicStatusUI();
+                            window._uiReady = true;
+                        } catch(e) { console.log('UI apply error', e); window._uiReady = true; }
+                        // FIXED: Only hide loader AFTER admin changes are fully applied
                         window._firebaseConfigLoaded = true;
-                        if(window._tryHideLoader) window._tryHideLoader(); else hideInitialLoader();
-                    }, 100);
+                        if(window._tryHideLoader) window._tryHideLoader();
+                    }, 150);
                     
                 } else {
                     console.log('No Firestore config found, creating from local/default');
@@ -2769,17 +2778,21 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
                     try { 
                         if(typeof window.applyUISettings === 'function') window.applyUISettings(); 
                         if(typeof window.renderSitePacks === 'function') window.renderSitePacks();
-                    } catch(e){ console.log('Render fallback error', e); }
+                        window._uiReady = true;
+                    } catch(e){ console.log('Render fallback error', e); window._uiReady = true; }
                     window._firebaseConfigLoaded = true;
-                    if(window._tryHideLoader) window._tryHideLoader(); else hideInitialLoader();
+                    if(window._tryHideLoader) window._tryHideLoader();
                 }
                 
             }, (error) => {
                 console.error("Live Database Listener Error:", error);
-                try { if(typeof window.applyUISettings === 'function') window.applyUISettings(); } catch(e) {}
-                if(typeof window.renderSitePacks === 'function') window.renderSitePacks();
+                try { 
+                    if(typeof window.applyUISettings === 'function') window.applyUISettings(); 
+                    if(typeof window.renderSitePacks === 'function') window.renderSitePacks();
+                    window._uiReady = true;
+                } catch(e) {}
                 window._firebaseConfigLoaded = true;
-                if(window._tryHideLoader) window._tryHideLoader(); else hideInitialLoader();
+                if(window._tryHideLoader) window._tryHideLoader();
             });
         });
     }
@@ -3010,26 +3023,53 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
 
 
     function isUpiLink(url) {
-        return url && (url.startsWith('upi://') || url.startsWith('intent://') || url.startsWith('tez://') || url.startsWith('paytmmp://') || url.startsWith('phonepe://') || url.startsWith('gpay://'));
+        if(!url || typeof url !== 'string') return false;
+        var u = url.trim().toLowerCase();
+        return u.startsWith('upi://') || u.startsWith('intent://') || u.startsWith('tez://') || u.startsWith('paytmmp://') || u.startsWith('phonepe://') || u.startsWith('gpay://') || u.includes('upi://') || u.includes('pa=') && u.includes('pn=');
+    }
+    function hasUpiLink(links) {
+        if(!links || !Array.isArray(links) || links.length===0) return false;
+        for(var i=0;i<links.length;i++){ if(isUpiLink(links[i])) return true; }
+        return false;
+    }
+    function filterUpiLinks(links) {
+        if(!links || !Array.isArray(links)) return [];
+        var out=[];
+        for(var i=0;i<links.length;i++){ if(isUpiLink(links[i])) out.push(links[i].trim()); }
+        return out;
     }
 
     function openPaymentUrl(url) {
         if (!url || url === 'FREE_PACK') return null;
+        if(typeof url === 'string') url = url.trim();
         const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+        const isAndroid = /Android/i.test(navigator.userAgent);
         if (isUpiLink(url)) {
-            if(isIOS){ window.location.href = url; return null; }
-            // Android: Hidden iframe approach (purana wala)
-            const iframe = document.createElement('iframe');
-            iframe.style.display = 'none';
-            iframe.style.width = '0';
-            iframe.style.height = '0';
-            iframe.style.border = 'none';
-            iframe.src = url;
-            document.body.appendChild(iframe);
-            
-            setTimeout(() => {
-                if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
-            }, 3000);
+            // FIX: Works in all browsers - Chrome, Firefox, Samsung Internet, Opera
+            if(isIOS){
+                window.location.href = url;
+                return null;
+            }
+            // Android: Try location.href first (works in all browsers), fallback iframe
+            try {
+                // For Chrome/others, intent:// needs top navigation
+                window.location.href = url;
+            } catch(e) {
+                console.log('location.href failed', e);
+            }
+            // Backup iframe method for older Chrome versions
+            try {
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.style.width = '0';
+                iframe.style.height = '0';
+                iframe.style.border = 'none';
+                iframe.src = url;
+                document.body.appendChild(iframe);
+                setTimeout(() => {
+                    if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+                }, 3000);
+            } catch(e) {}
             return null;
         } else {
             // Regular https Razorpay links open in new tab as before
@@ -3041,9 +3081,15 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
     function getUpiQueryString(upiUrl) {
         try {
             if (!upiUrl) return '';
+            upiUrl = upiUrl.trim();
+            // Handle upi://pay?xxx and also https://...?pa= style
             const qIndex = upiUrl.indexOf('?');
             if (qIndex === -1) return '';
-            return upiUrl.substring(qIndex + 1);
+            var qs = upiUrl.substring(qIndex + 1);
+            // Remove fragment if present (#Intent etc)
+            var hashIdx = qs.indexOf('#');
+            if(hashIdx !== -1) qs = qs.substring(0, hashIdx);
+            return qs;
         } catch(e) { return ''; }
     }
 
@@ -3054,9 +3100,15 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
     }
 
     window.openSpecificUpiApp = function(appType) {
-        let baseLink = currentRzpLink;
-        if (!baseLink || baseLink === 'FREE_PACK') {
-            baseLink = window._lastRzpTargetLink || '';
+        let baseLink = (currentRzpLink && currentRzpLink.trim()) || (window._lastRzpTargetLink && window._lastRzpTargetLink.trim()) || '';
+        // FIXED: If baseLink is not UPI but pack has UPI links, use pack UPI - fixes other browser/phone issue
+        if(!isUpiLink(baseLink) && typeof selectedPack !== 'undefined' && selectedPack && selectedPack.rzpLinks) {
+            var packUpi = filterUpiLinks(selectedPack.rzpLinks);
+            if(packUpi.length>0) baseLink = packUpi[0];
+        }
+        if(!isUpiLink(baseLink) && window.siteConfig && window.siteConfig.razorpayLinks) {
+            var globUpi = filterUpiLinks(window.siteConfig.razorpayLinks);
+            if(globUpi.length>0) baseLink = globUpi[0];
         }
         if (!baseLink) {
             alert('Payment link not found. Please try again.');
@@ -3073,6 +3125,7 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
         }
 
         const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+        const isAndroid = /Android/i.test(navigator.userAgent);
         const siteFallback = encodeURIComponent(window.location.href);
 
         // ===== iPHONE FIX - sirf iOS ke liye =====
@@ -3110,7 +3163,7 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
             return;
         }
 
-        // ===== ANDROID PURANA WALA - NO CHANGE =====
+        // ===== ANDROID - FIXED FOR ALL BROWSERS (Chrome, Firefox, Samsung, Opera) =====
         let directLink = '';
         let intentLink = '';
 
@@ -3141,50 +3194,57 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
                 break;
             case 'other':
             default:
-                openPaymentUrl(baseLink);
-                triggerHaptic('light');
-                try{
-                  if(typeof qrTimer !== 'undefined' && qrTimer) clearInterval(qrTimer);
-                  if(typeof paymentVerificationInterval !== 'undefined' && paymentVerificationInterval) clearInterval(paymentVerificationInterval);
-                  if(typeof showPaymentWaitingLoader === 'function') showPaymentWaitingLoader();
-                  if(typeof startQRTimer === 'function') startQRTimer();
-                  var amtO = (typeof exactPriceStr !== 'undefined' && exactPriceStr) ? exactPriceStr : (document.getElementById('rzpExactAmountText') ? document.getElementById('rzpExactAmountText').textContent : '');
-                  if(amtO && typeof startPaymentVerification === 'function'){
-                    startPaymentVerification(amtO);
-                  }
-                }catch(e){ console.log('other verification start error', e); }
-                return;
+                // For Other UPI Apps, try generic upi:// first then intent
+                directLink = `upi://pay?${query}`;
+                intentLink = `intent://pay?${query}#Intent;scheme=upi;S.browser_fallback_url=${siteFallback};end`;
+                break;
         }
 
         triggerHaptic('light');
 
+        // FIXED: Try intent via location.href first (works in all Android browsers)
+        // Chrome, Firefox, Samsung Internet, Opera all support intent via location.href
         try {
-            const iframe1 = document.createElement('iframe');
-            iframe1.style.display = 'none';
-            iframe1.style.width = '0';
-            iframe1.style.height = '0';
-            iframe1.src = intentLink;
-            document.body.appendChild(iframe1);
-            setTimeout(() => { if (iframe1.parentNode) iframe1.parentNode.removeChild(iframe1); }, 3000);
-        } catch(e) { console.log('Intent open error', e); }
-
-        setTimeout(() => {
-            try {
-                openPaymentUrl(directLink);
-            } catch(e) { console.log('Direct link error', e); }
-        }, 400);
+            if(isAndroid) {
+                window.location.href = intentLink;
+                // Fallback to direct scheme after 800ms if intent fails
+                setTimeout(() => {
+                    try {
+                        window.location.href = directLink;
+                    } catch(e) {}
+                    // Last fallback generic upi://
+                    setTimeout(() => {
+                        try {
+                            if(directLink !== `upi://pay?${query}`) {
+                                window.location.href = `upi://pay?${query}`;
+                            }
+                        } catch(e) {}
+                    }, 600);
+                }, 800);
+            } else {
+                // Desktop or other: try iframe + generic
+                const iframe1 = document.createElement('iframe');
+                iframe1.style.display = 'none';
+                iframe1.style.width = '0';
+                iframe1.style.height = '0';
+                iframe1.src = intentLink;
+                document.body.appendChild(iframe1);
+                setTimeout(() => { if (iframe1.parentNode) iframe1.parentNode.removeChild(iframe1); }, 3000);
+                setTimeout(() => {
+                    try { openPaymentUrl(directLink); } catch(e) {}
+                }, 400);
+            }
+        } catch(e) { 
+            console.log('Intent open error', e);
+            try { window.location.href = directLink; } catch(err){}
+        }
 
         // === NEW LOGIC: Start 80 sec verification + show black capsule at bottom ===
         try{
-          // Reset any existing timers
           if(typeof qrTimer !== 'undefined' && qrTimer) clearInterval(qrTimer);
           if(typeof paymentVerificationInterval !== 'undefined' && paymentVerificationInterval) clearInterval(paymentVerificationInterval);
-          
-          // Show capsule
           if(typeof showPaymentWaitingLoader === 'function') showPaymentWaitingLoader();
-          // Start 80 sec timer
           if(typeof startQRTimer === 'function') startQRTimer();
-          // Start verification every 1 second - use exactPriceStr if available, else try to get from DOM
           var amt = (typeof exactPriceStr !== 'undefined' && exactPriceStr) ? exactPriceStr : (document.getElementById('rzpExactAmountText') ? document.getElementById('rzpExactAmountText').textContent : '');
           if(amt && typeof startPaymentVerification === 'function'){
             startPaymentVerification(amt);
@@ -4681,37 +4741,64 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
       }
     }
 
-    // FIXED: Loader now waits for admin config (Firebase) to load
+    // FIXED: Loader now waits for admin config (Firebase) to load - V2 robust
     window._domReady = false;
     window._firebaseConfigLoaded = false;
+    window._uiReady = false;
+    window._windowLoaded = false;
+    window._loaderHideAttempted = false;
+    
     window._tryHideLoader = function() {
-        if(window._domReady && window._firebaseConfigLoaded) {
-            hideInitialLoader();
+        // Only hide when DOM ready + Firebase config confirmed + UI applied
+        // window load is optional but we ensure at least 300ms after UI ready for paint
+        if(window._domReady && window._firebaseConfigLoaded && window._uiReady) {
+            if(window._loaderHideAttempted) return;
+            window._loaderHideAttempted = true;
+            // small delay to ensure images/text painted
+            setTimeout(() => {
+                hideInitialLoader();
+            }, 350);
         }
     };
+
+    // Also track window load for images
+    window.addEventListener('load', () => {
+        window._windowLoaded = true;
+        // if everything else ready, try hide
+        window._tryHideLoader();
+    });
 
     document.addEventListener('DOMContentLoaded', () => {
       if ('scrollRestoration' in history) { history.scrollRestoration = 'manual'; }
       history.replaceState({ step: 1, type: 'step' }, document.title, window.location.href);
       initParticles();
-      document.getElementById('next1').disabled = true;
+      const n1 = document.getElementById('next1');
+      if(n1) n1.disabled = true;
       window._domReady = true;
 
       // If we already have cached config (returning user), render it immediately to avoid blank screen,
       // but still keep loader until Firebase confirms latest admin changes
       const hasCachedConfig = !!localStorage.getItem('ucifyAdminConfigV2');
       if(hasCachedConfig) {
-          try { window.applyUISettings(); window.renderSitePacks(); } catch(e) {}
+          try { 
+            if(typeof window.applyUISettings === 'function') window.applyUISettings(); 
+            if(typeof window.renderSitePacks === 'function') window.renderSitePacks();
+            window._uiReady = true;
+          } catch(e) {}
       }
-      // Fallback: if Firebase fails / offline, render after 5.5s and hide loader
+      // Fallback: if Firebase fails / offline, render after 10s and hide loader (increased from 5.5s)
       setTimeout(() => {
         if (!window._firebaseConfigLoaded) {
           console.warn('Firebase timeout, rendering with cached/default config');
-          try { window.applyUISettings(); window.renderSitePacks(); } catch(e) {}
+          try { 
+            if(typeof window.applyUISettings === 'function') window.applyUISettings(); 
+            if(typeof window.renderSitePacks === 'function') window.renderSitePacks();
+            window._uiReady = true;
+          } catch(e) {}
           window._firebaseConfigLoaded = true;
           window._tryHideLoader();
         }
-      }, 5500);
+      }, 10000);
       // Force render default packs immediately so step 2 never blank
       try { 
         if(!window.siteConfig.trialPacks || window.siteConfig.trialPacks.length===0) {
@@ -4720,7 +4807,11 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
         if(!window.siteConfig.bulkPacks || window.siteConfig.bulkPacks.length===0) {
           window.siteConfig.bulkPacks = (window.defaultAdminConfig && window.defaultAdminConfig.bulkPacks) || (window.__FALLBACK_PACKS && window.__FALLBACK_PACKS.bulkPacks) || [];
         }
-        window.renderSitePacks(); 
+        if(typeof window.renderSitePacks === 'function') window.renderSitePacks();
+        // mark UI ready even for fallback, but loader will still wait for firebase unless timeout
+        if(!hasCachedConfig) {
+            window._uiReady = true;
+        }
       } catch(e){ console.log('Initial render error', e); }
       // Try hide if firebase already loaded before DOM
       window._tryHideLoader();
@@ -5782,21 +5873,32 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
       let isFreePack = exactPrice === 0; 
       let rzpTargetLink = "";
 
-      let rzpGlobalLinks = window.siteConfig.razorpayLinks || [];
-      let packSpecificLinks = selectedPack.rzpLinks || [];
+      let rzpGlobalLinks = (window.siteConfig && window.siteConfig.razorpayLinks) ? window.siteConfig.razorpayLinks.filter(l=>l && l.trim()) : [];
+      let packSpecificLinks = (selectedPack && selectedPack.rzpLinks) ? selectedPack.rzpLinks.filter(l=>l && l.trim()) : [];
       
       if (isFreePack) {
           rzpTargetLink = "FREE";
           currentRzpLink = "FREE_PACK";
       } else {
-          if (packSpecificLinks.length > 0) { 
+          // FIXED: Prefer UPI links if present - ensures UPI apps show consistently across all browsers/phones
+          let packUpiLinks = filterUpiLinks(packSpecificLinks);
+          let globalUpiLinks = filterUpiLinks(rzpGlobalLinks);
+          
+          if (packUpiLinks.length > 0) { 
+              // If pack has UPI links, always use a UPI link (consistent across browsers)
+              rzpTargetLink = packUpiLinks[Math.floor(Math.random() * packUpiLinks.length)];
+          } else if (packSpecificLinks.length > 0) { 
               rzpTargetLink = packSpecificLinks[Math.floor(Math.random() * packSpecificLinks.length)];
+          } else if (globalUpiLinks.length > 0) { 
+              // Prefer global UPI if pack has no links
+              rzpTargetLink = globalUpiLinks[Math.floor(Math.random() * globalUpiLinks.length)];
           } else if (rzpGlobalLinks.length > 0) { 
               rzpTargetLink = rzpGlobalLinks[Math.floor(Math.random() * rzpGlobalLinks.length)];
           }
           // Store link globally for direct app open feature
-          currentRzpLink = rzpTargetLink;
-          window._lastRzpTargetLink = rzpTargetLink;
+          currentRzpLink = rzpTargetLink ? rzpTargetLink.trim() : "";
+          window._lastRzpTargetLink = currentRzpLink;
+          console.log('Selected payment link:', currentRzpLink, 'isUPI:', isUpiLink(currentRzpLink), 'packUPI:', packUpiLinks.length, 'globalUPI:', globalUpiLinks.length);
       }
       
       exactPriceStr = exactPrice.toString();
@@ -5887,13 +5989,32 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
 
       if (upiGrid) {
         var masterUpiEnabled = (typeof getTgl === 'function') ? getTgl('showUpiGrid') : true;
+        // FIXED: Show UPI grid if ANY UPI link exists in pack or global, not just selected link - fixes cross-browser/phone issue
+        var anyUpiExists = !isFreePack && (isUpiLink(rzpTargetLink) || hasUpiLink(packSpecificLinks) || hasUpiLink(rzpGlobalLinks));
         if (!masterUpiEnabled) {
           upiGrid.style.display = 'none';
-        } else if (!isFreePack && isUpiLink(rzpTargetLink)) {
+        } else if (anyUpiExists) {
           upiGrid.style.display = 'flex';
+          // If selected link is not UPI but pack has UPI, switch current link to UPI for app opening
+          if(!isUpiLink(rzpTargetLink) && hasUpiLink(packSpecificLinks)) {
+              var ups = filterUpiLinks(packSpecificLinks);
+              if(ups.length>0) {
+                  currentRzpLink = ups[0];
+                  window._lastRzpTargetLink = ups[0];
+                  rzpTargetLink = ups[0];
+              }
+          } else if(!isUpiLink(rzpTargetLink) && hasUpiLink(rzpGlobalLinks)) {
+              var gups = filterUpiLinks(rzpGlobalLinks);
+              if(gups.length>0) {
+                  currentRzpLink = gups[0];
+                  window._lastRzpTargetLink = gups[0];
+                  rzpTargetLink = gups[0];
+              }
+          }
         } else {
           upiGrid.style.display = 'none';
         }
+        console.log('UPI Grid display:', upiGrid.style.display, 'anyUpi:', anyUpiExists, 'targetIsUpi:', isUpiLink(rzpTargetLink));
       }
 
       // v2 Logic as per request: No top Pay button, only amount. No bottom Pay button, only Back button full width.
