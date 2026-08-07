@@ -29,7 +29,6 @@
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
   <link rel="manifest" href="/site.webmanifest">
-  <link rel="preconnect" href="https://nextlevelbgmizone.com">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
@@ -2700,8 +2699,6 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
     };
 
     window.saveConfigToDB = async function(newConfig) {
-        try { newConfig._lastUpdate = Date.now(); } catch(e){}
-
         if(!db || !auth.currentUser) return false;
         try {
             const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'ucifyConfig', 'mainV2');
@@ -2754,16 +2751,7 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
 
                     window.siteConfig = dbConfig;
                     // FIXED: Save latest admin config to localStorage so new users on next visit get instant correct data
-                    try { 
-                        localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(dbConfig)); 
-                    } catch(e) {
-                        try {
-                            const tempCfg = JSON.parse(JSON.stringify(dbConfig));
-                            if(tempCfg.gameInfo && tempCfg.gameInfo.banners) tempCfg.gameInfo.banners = tempCfg.gameInfo.banners.slice(0,2);
-                            localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(tempCfg));
-                        } catch(e2) {}
-                    }
-                    
+                    // FIXED: Firebase config will be used directly, no localStorage for admin save - but keep for user cache? Removed per request
                     // Delay render to ensure DOM is fully ready and avoid race conditions
                     setTimeout(() => {
                         try {
@@ -2931,9 +2919,7 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
       window.siteConfig.bulkPacks = JSON.parse(JSON.stringify(defaultAdminConfig.bulkPacks));
     }
     // Always save corrected config back
-    try { localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(window.siteConfig)); } catch(e){}
-
-    
+    // FIXED: No localStorage - Firebase only
     // Auto-migrate new object properties safely
     if(!window.siteConfig.faqs) {
         window.siteConfig.faqs = defaultAdminConfig.faqs;
@@ -3105,10 +3091,25 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
     }
 
     function buildIntentUrl(query, pkg) {
-        // FIXED: Use hash fallback to prevent full page reload on Edge and other browsers
-        const baseUrl = window.location.href.split('#')[0];
-        const fallback = encodeURIComponent(baseUrl + '#upi-return');
+        // FIXED: Use Play Store as fallback, not current site, to prevent Edge reload
+        const playStoreFallback = "https://play.google.com/store";
+        const fallback = encodeURIComponent(playStoreFallback);
         return `intent://pay?${query}#Intent;scheme=upi;package=${pkg};S.browser_fallback_url=${fallback};end`;
+    }
+
+    function buildIntentUrlSafe(query, pkg, appType) {
+        const playStoreMap = {
+            phonepe: 'https://play.google.com/store/apps/details?id=com.phonepe.app',
+            gpay: 'https://play.google.com/store/apps/details?id=com.google.android.apps.nbu.paisa.user',
+            paytm: 'https://play.google.com/store/apps/details?id=net.one97.paytm',
+            amazonpay: 'https://play.google.com/store/apps/details?id=in.amazon.mShop.android.shopping',
+            mobikwik: 'https://play.google.com/store/apps/details?id=com.mobikwik_new',
+            whatsapp: 'https://play.google.com/store/apps/details?id=com.whatsapp',
+            other: 'https://play.google.com/store'
+        };
+        const fb = encodeURIComponent(playStoreMap[appType] || playStoreMap.other);
+        return `intent://pay?${query}#Intent;scheme=upi;package=${pkg};S.browser_fallback_url=${fb};end`;
+    }#Intent;scheme=upi;package=${pkg};S.browser_fallback_url=${fallback};end`;
     }
 
     window.openSpecificUpiApp = function(appType) {
@@ -3137,22 +3138,43 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
 
         const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
         const isAndroid = /Android/i.test(navigator.userAgent);
-        const isEdge = /Edg\//i.test(navigator.userAgent);
-        const isDesktop = !isAndroid && !isIOS;
+        const isEdge = /Edg\//i.test(navigator.userAgent) || /EdgA/i.test(navigator.userAgent);
 
-        if (isDesktop) {
-            try {
-                const tempA = document.createElement('a');
-                tempA.href = baseLink;
-                tempA.target = '_blank';
-                tempA.rel = 'noopener noreferrer';
-                tempA.style.display = 'none';
-                document.body.appendChild(tempA);
-                tempA.click();
-                setTimeout(function(){ try{ if(tempA.parentNode) tempA.parentNode.removeChild(tempA); }catch(e){} }, 500);
-            } catch(e) {
-                console.log('Desktop UPI open error', e);
+        // Play Store fallbacks - prevents Edge reload to same site
+        const playStoreMap = {
+            phonepe: 'https://play.google.com/store/apps/details?id=com.phonepe.app',
+            gpay: 'https://play.google.com/store/apps/details?id=com.google.android.apps.nbu.paisa.user',
+            paytm: 'https://play.google.com/store/apps/details?id=net.one97.paytm',
+            amazonpay: 'https://play.google.com/store/apps/details?id=in.amazon.mShop.android.shopping',
+            mobikwik: 'https://play.google.com/store/apps/details?id=com.mobikwik_new',
+            whatsapp: 'https://play.google.com/store/apps/details?id=com.whatsapp',
+            other: 'https://play.google.com/store'
+        };
+
+        function buildSafeIntent(q, pkg, type) {
+            const fb = encodeURIComponent(playStoreMap[type] || playStoreMap.other);
+            return `intent://pay?${q}#Intent;scheme=upi;package=${pkg};S.browser_fallback_url=${fb};end`;
+        }
+
+        // ===== iOS handling =====
+        if (isIOS) {
+            let iosLink = '';
+            switch(appType) {
+                case 'phonepe': iosLink = `phonepe://pay?${query}`; break;
+                case 'gpay': iosLink = `gpay://upi/pay?${query}`; break;
+                case 'paytm': iosLink = `paytmmp://pay?${query}`; break;
+                case 'amazonpay': iosLink = `upi://pay?${query}`; break;
+                case 'mobikwik': iosLink = `upi://pay?${query}`; break;
+                case 'whatsapp': iosLink = `upi://pay?${query}`; break;
+                case 'other':
+                default: iosLink = `upi://pay?${query}`; break;
             }
+            window.location.href = iosLink;
+            setTimeout(() => {
+                if (iosLink !== `upi://pay?${query}`) {
+                    window.location.href = `upi://pay?${query}`;
+                }
+            }, 1100);
             try{
               if(typeof qrTimer !== 'undefined' && qrTimer) clearInterval(qrTimer);
               if(typeof paymentVerificationInterval !== 'undefined' && paymentVerificationInterval) clearInterval(paymentVerificationInterval);
@@ -3162,114 +3184,129 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
               if(amt2 && typeof startPaymentVerification === 'function'){
                 startPaymentVerification(amt2);
               }
-            }catch(e){ console.log('verification start error', e); }
+            }catch(e){ console.log('ios verification start error', e); }
             return;
         }
 
-        const siteFallback = encodeURIComponent(window.location.href.split('#')[0] + '#upi-return');
+        // ===== ANDROID & DESKTOP FIX - NO RELOAD =====
         let directLink = '';
         let intentLink = '';
 
         switch(appType) {
             case 'phonepe':
                 directLink = `phonepe://pay?${query}`;
-                intentLink = buildIntentUrl(query, 'com.phonepe.app');
+                intentLink = buildSafeIntent(query, 'com.phonepe.app', 'phonepe');
                 break;
             case 'gpay':
                 directLink = `tez://upi/pay?${query}`;
-                intentLink = buildIntentUrl(query, 'com.google.android.apps.nbu.paisa.user');
+                intentLink = buildSafeIntent(query, 'com.google.android.apps.nbu.paisa.user', 'gpay');
                 break;
             case 'paytm':
                 directLink = `paytmmp://pay?${query}`;
-                intentLink = `intent://pay?${query}#Intent;scheme=upi;package=net.one97.paytm;S.browser_fallback_url=${siteFallback};end`;
+                intentLink = `intent://pay?${query}#Intent;scheme=upi;package=net.one97.paytm;S.browser_fallback_url=${encodeURIComponent(playStoreMap.paytm)};end`;
                 break;
             case 'amazonpay':
                 directLink = `upi://pay?${query}`;
-                intentLink = `intent://pay?${query}#Intent;scheme=upi;package=in.amazon.mShop.android.shopping;S.browser_fallback_url=${siteFallback};end`;
+                intentLink = `intent://pay?${query}#Intent;scheme=upi;package=in.amazon.mShop.android.shopping;S.browser_fallback_url=${encodeURIComponent(playStoreMap.amazonpay)};end`;
                 break;
             case 'mobikwik':
                 directLink = `upi://pay?${query}`;
-                intentLink = `intent://pay?${query}#Intent;scheme=upi;package=com.mobikwik_new;S.browser_fallback_url=${siteFallback};end`;
+                intentLink = `intent://pay?${query}#Intent;scheme=upi;package=com.mobikwik_new;S.browser_fallback_url=${encodeURIComponent(playStoreMap.mobikwik)};end`;
                 break;
             case 'whatsapp':
                 directLink = `upi://pay?${query}`;
-                intentLink = `intent://pay?${query}#Intent;scheme=upi;package=com.whatsapp;S.browser_fallback_url=${siteFallback};end`;
+                intentLink = `intent://pay?${query}#Intent;scheme=upi;package=com.whatsapp;S.browser_fallback_url=${encodeURIComponent(playStoreMap.whatsapp)};end`;
                 break;
             case 'other':
             default:
                 directLink = `upi://pay?${query}`;
-                intentLink = `intent://pay?${query}#Intent;scheme=upi;S.browser_fallback_url=${siteFallback};end`;
+                intentLink = `intent://pay?${query}#Intent;scheme=upi;S.browser_fallback_url=${encodeURIComponent(playStoreMap.other)};end`;
                 break;
         }
 
         triggerHaptic('light');
 
-        let appOpened = false;
-        let fallbackTimer1 = null;
-        let fallbackTimer2 = null;
-        const onVisChange = function() {
-            if (document.hidden) {
-                appOpened = true;
-                clearTimeout(fallbackTimer1);
-                clearTimeout(fallbackTimer2);
-                document.removeEventListener('visibilitychange', onVisChange);
-                window.removeEventListener('pagehide', onVisChange);
-            }
-        };
-        document.addEventListener('visibilitychange', onVisChange);
-        window.addEventListener('pagehide', onVisChange);
-
-        if (window._upiFallbackTimer1) clearTimeout(window._upiFallbackTimer1);
-        if (window._upiFallbackTimer2) clearTimeout(window._upiFallbackTimer2);
+        // FIXED: Prevent Edge reload - use iframe approach, not location.href for intent
+        let hasBlurred = false;
+        const blurHandler = () => { hasBlurred = true; };
+        window.addEventListener('blur', blurHandler, { once: true });
+        window.addEventListener('visibilitychange', () => { if(document.hidden) hasBlurred = true; }, { once: true });
 
         try {
             if(isAndroid) {
-                if (isEdge) {
+                if(isEdge) {
+                    // Edge on Android - use direct scheme only via iframe to avoid reload
+                    const iframe = document.createElement('iframe');
+                    iframe.style.display = 'none';
+                    iframe.src = directLink;
+                    document.body.appendChild(iframe);
+                    setTimeout(() => { 
+                        if(!hasBlurred && iframe.parentNode) {
+                            // Try intent as second attempt if still on page
+                            iframe.src = intentLink;
+                        }
+                        setTimeout(() => { if(iframe.parentNode) iframe.parentNode.removeChild(iframe); }, 2500);
+                    }, 600);
+                    // Also try generic upi:// after 1s if not blurred
+                    setTimeout(() => {
+                        if(!hasBlurred && directLink !== `upi://pay?${query}`) {
+                            const iframe2 = document.createElement('iframe');
+                            iframe2.style.display = 'none';
+                            iframe2.src = `upi://pay?${query}`;
+                            document.body.appendChild(iframe2);
+                            setTimeout(() => { if(iframe2.parentNode) iframe2.parentNode.removeChild(iframe2); }, 2000);
+                        }
+                    }, 1200);
+                } else {
+                    // Chrome, Samsung, Firefox - iframe for intent (no reload)
                     const iframe = document.createElement('iframe');
                     iframe.style.display = 'none';
                     iframe.src = intentLink;
                     document.body.appendChild(iframe);
-                    fallbackTimer1 = setTimeout(function(){
-                        if (!appOpened && !document.hidden) {
-                            try { window.location.href = directLink; } catch(e){}
+                    setTimeout(() => {
+                        if(!hasBlurred) {
+                            try { iframe.src = directLink; } catch(e) {}
                         }
-                        try { if(iframe.parentNode) iframe.parentNode.removeChild(iframe); } catch(e){}
-                    }, 900);
-                } else {
-                    window.location.href = intentLink;
-                    fallbackTimer1 = setTimeout(function(){
-                        if (!appOpened && !document.hidden) {
-                            try { window.location.href = directLink; } catch(e){}
-                            fallbackTimer2 = setTimeout(function(){
-                                if (!appOpened && !document.hidden && directLink !== `upi://pay?${query}`) {
-                                    try { window.location.href = `upi://pay?${query}`; } catch(e){}
-                                }
-                            }, 700);
-                            window._upiFallbackTimer2 = fallbackTimer2;
+                        setTimeout(() => { if(iframe.parentNode) iframe.parentNode.removeChild(iframe); }, 2500);
+                    }, 800);
+                    setTimeout(() => {
+                        if(!hasBlurred && directLink !== `upi://pay?${query}`) {
+                            const iframe2 = document.createElement('iframe');
+                            iframe2.style.display = 'none';
+                            iframe2.src = `upi://pay?${query}`;
+                            document.body.appendChild(iframe2);
+                            setTimeout(() => { if(iframe2.parentNode) iframe2.parentNode.removeChild(iframe2); }, 2000);
                         }
-                    }, 900);
-                    window._upiFallbackTimer1 = fallbackTimer1;
+                    }, 1500);
                 }
-            } else if(isIOS) {
-                let iosLink = '';
-                switch(appType) {
-                    case 'phonepe': iosLink = `phonepe://pay?${query}`; break;
-                    case 'gpay': iosLink = `gpay://upi/pay?${query}`; break;
-                    case 'paytm': iosLink = `paytmmp://pay?${query}`; break;
-                    default: iosLink = `upi://pay?${query}`; break;
+            } else {
+                // Desktop - don't reload, use window.open for upi link
+                const iframe1 = document.createElement('iframe');
+                iframe1.style.display = 'none';
+                iframe1.src = directLink;
+                document.body.appendChild(iframe1);
+                setTimeout(() => { if (iframe1.parentNode) iframe1.parentNode.removeChild(iframe1); }, 3000);
+                // Desktop Edge should NOT reload - show message if needed
+                if(isEdge && !isAndroid) {
+                    setTimeout(() => {
+                        if(!hasBlurred) {
+                            console.log('UPI payment requires mobile device. Please open on phone or scan QR.');
+                        }
+                    }, 1000);
                 }
-                window.location.href = iosLink;
-                fallbackTimer1 = setTimeout(function(){
-                    if (!appOpened && !document.hidden && iosLink !== `upi://pay?${query}`) {
-                        try { window.location.href = `upi://pay?${query}`; } catch(e){}
-                    }
-                }, 1100);
             }
         } catch(e) { 
             console.log('Intent open error', e);
-            try { window.location.href = directLink; } catch(err){}
+            try { 
+                const fallbackIframe = document.createElement('iframe');
+                fallbackIframe.style.display = 'none';
+                fallbackIframe.src = directLink;
+                document.body.appendChild(fallbackIframe);
+                setTimeout(() => { if(fallbackIframe.parentNode) fallbackIframe.parentNode.removeChild(fallbackIframe); }, 2000);
+            } catch(err){}
         }
 
+        // Start verification without reload
         try{
           if(typeof qrTimer !== 'undefined' && qrTimer) clearInterval(qrTimer);
           if(typeof paymentVerificationInterval !== 'undefined' && paymentVerificationInterval) clearInterval(paymentVerificationInterval);
@@ -3282,7 +3319,8 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
         }catch(e){ console.log('verification start error', e); }
     };
 
-    // === Card Payment Demo - Display Only ===
+
+
     // === Card Payment Demo - Display Only ===
     window.toggleCardForm = function() {
         var container = document.getElementById('cardFormContainer');
@@ -4394,7 +4432,7 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
             img.onload = function() {
                 const canvas = document.createElement('canvas');
                 let width = img.width; let height = img.height;
-                const maxSize = 200;
+                const maxSize = 128; // FIXED: Reduced from 300 to 128 to save Firebase size & fix cache issue
                 if(width > maxSize || height > maxSize) {
                     if(width > height) { height *= maxSize / width; width = maxSize; }
                     else { width *= maxSize / height; height = maxSize; }
@@ -4402,25 +4440,15 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
                 canvas.width = width; canvas.height = height;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
-                const base64 = canvas.toDataURL('image/webp', 0.60);
+                const base64 = canvas.toDataURL('image/webp', 0.6); // FIXED: 0.6 quality to reduce size
                 if(!window.siteConfig[type][packIndex]) return;
                 window.siteConfig[type][packIndex].packImage = base64;
                 window.renderAdminPacksList();
                 window.renderSitePacks();
-                try { 
-                    localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(window.siteConfig)); 
-                } catch(err) {
-                    console.log('localStorage quota exceeded, trying without banners', err);
-                    try {
-                        const tempConfig = JSON.parse(JSON.stringify(window.siteConfig));
-                        if(tempConfig.gameInfo && tempConfig.gameInfo.banners) tempConfig.gameInfo.banners = [];
-                        localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(tempConfig));
-                    } catch(e2) {
-                        try { localStorage.removeItem('ucifyAdminConfigV2'); localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(window.siteConfig)); } catch(e3){}
-                    }
-                }
+                // FIXED: Don't save to localStorage here, only Firebase will be source (fixes stale cache)
+                // Auto-save to Firebase if available for instant update
                 if(window.saveConfigToDB) {
-                    window.saveConfigToDB(window.siteConfig).then(function(s){ console.log('Auto-save pack image to DB:', s); }).catch(function(err){ console.log('Auto-save pack image failed', err); });
+                    window.saveConfigToDB(window.siteConfig).then(s=>console.log('Pack image auto-saved to DB:', s)).catch(err=>console.log('DB save error', err));
                 }
             };
             img.src = e.target.result;
@@ -4477,11 +4505,15 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetting...'; btn.disabled = true;
 
         window.siteConfig = JSON.parse(JSON.stringify(defaultAdminConfig));
-        localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(window.siteConfig));
-
+        // FIXED: Don't save to localStorage, only Firebase
         if (window.saveConfigToDB) {
             const success = await window.saveConfigToDB(window.siteConfig);
-            if (!success) alert("Database reset failed. Check console or make sure Firebase is configured. Only local data was reset.");
+            if (!success) alert("Database reset failed. Check console or make sure Firebase is configured.");
+            else {
+                alert("Settings reset! Reloading...");
+                setTimeout(() => location.reload(), 500);
+                return;
+            }
         }
 
         setTimeout(() => {
@@ -4490,6 +4522,8 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
             alert("Settings have been successfully reset to default.");
         }, 1000);
     }
+
+
 
     window.saveAdminSettings = async function() {
         const btn = document.getElementById('adminSaveBtn'); const originalText = btn.innerHTML;
@@ -4505,7 +4539,6 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
         window.siteConfig.audio.enabled = document.getElementById('adminAudioEnable').checked;
         window.siteConfig.audio.volume = document.getElementById('adminAudioVolume').value;
 
-        // Save Game Info - FlashTOP
         if(!window.siteConfig.gameInfo) window.siteConfig.gameInfo = {};
         var gNameEl = document.getElementById('adminGameName');
         var gPubEl = document.getElementById('adminGamePublisher');
@@ -4515,12 +4548,12 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
         if(gPubEl) window.siteConfig.gameInfo.publisher = gPubEl.value.trim() || defaultAdminConfig.gameInfo.publisher;
         if(gPlayEl) window.siteConfig.gameInfo.playStoreLink = gPlayEl.value.trim() || defaultAdminConfig.gameInfo.playStoreLink;
         if(gAppEl) window.siteConfig.gameInfo.appStoreLink = gAppEl.value.trim() || defaultAdminConfig.gameInfo.appStoreLink;
-        // Sync logo from uploaded image
         if(window.siteConfig.images && window.siteConfig.images.gameLogo) {
             window.siteConfig.gameInfo.logo = window.siteConfig.images.gameLogo;
         }
         
         const t = window.siteConfig.texts;
+        try {
         t.loaderText = document.getElementById('adminTextLoader').value.trim() || defaultAdminConfig.texts.loaderText;
         t.tagline = document.getElementById('adminTextTagline').value.trim() || defaultAdminConfig.texts.tagline;
         t.partnerBadge = document.getElementById('adminTextPartnerBadge').value.trim() || defaultAdminConfig.texts.partnerBadge;
@@ -4610,8 +4643,10 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
         t.ignModalL1 = document.getElementById('admTxtIgnMod1').value.trim() || defaultAdminConfig.texts.ignModalL1;
         t.ignModalL2 = document.getElementById('admTxtIgnMod2').value.trim() || defaultAdminConfig.texts.ignModalL2;
         t.ignModalL3 = document.getElementById('admTxtIgnMod3').value.trim() || defaultAdminConfig.texts.ignModalL3;
+        } catch(e) { console.log('Text save error', e); }
 
         const tg = window.siteConfig.toggles;
+        try {
         tg.siteActive = document.getElementById('adminSiteActive').checked;
         
         tg.showTagline = document.getElementById('tgl_tagline').checked;
@@ -4619,71 +4654,57 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
         tg.showInstantBadge = document.getElementById('tgl_instantBadge').checked;
         tg.showSupportBadge = document.getElementById('tgl_supportBadge').checked;
         tg.showOrdersToday = document.getElementById('tgl_ordersToday').checked;
-        
         tg.showStep1Title = document.getElementById('tgl_step1Title').checked;
         tg.showGrpUid = document.getElementById('tgl_grpUid').checked;
-        tg.showGrpIgn = document.getElementById('tgl_grpIgn').checked;
         tg.showHowToRedeem = document.getElementById('tgl_howToRedeem').checked;
         tg.showHowToQ1 = document.getElementById('tgl_howToQ1').checked;
         tg.showHowToQ2 = document.getElementById('tgl_howToQ2').checked;
-
         tg.showStep2Title = document.getElementById('tgl_step2Title').checked;
         tg.showLblTrial = document.getElementById('tgl_lblTrial').checked;
         tg.showLblRegular = document.getElementById('tgl_lblRegular').checked;
         tg.showEventNotice = document.getElementById('tgl_eventNotice').checked;
-
         tg.showStep3Title = document.getElementById('tgl_step3Title').checked;
         tg.showStep3Subnote = document.getElementById('tgl_step3Subnote').checked;
-        tg.showAwaitingStatus = document.getElementById('tgl_awaitingStatus').checked;
-        tg.showCancelBtn = document.getElementById('tgl_cancelBtn').checked;
-        
+        tg.showCardTile = document.getElementById('tgl_cardTile') ? document.getElementById('tgl_cardTile').checked : tg.showCardTile;
+        tg.showFreeClaimTitle = document.getElementById('tgl_freeClaimTitle').checked;
+        tg.showFreeClaimSubtitle = document.getElementById('tgl_freeClaimSubtitle').checked;
+        tg.showLockUi = document.getElementById('tgl_lockUi').checked;
+        tg.showAwaiting = document.getElementById('tgl_awaiting').checked;
         tg.showSuccessTitle = document.getElementById('tgl_successTitle').checked;
-        tg.showFinalOrderDetails = document.getElementById('tgl_finalOrderDetails').checked;
-        tg.showReceipt = document.getElementById('tgl_showReceipt').checked;
-        tg.enableNightMode = document.getElementById('tgl_enableNightMode').checked;
-        
+        tg.showStep4Subtitle = document.getElementById('tgl_step4Subtitle').checked;
+        tg.showFinalLbls = document.getElementById('tgl_finalLbls').checked;
+        tg.showNightMode = document.getElementById('tgl_nightMode').checked;
+        tg.showReceipt = document.getElementById('tgl_receipt').checked;
         tg.showWhyChoose = document.getElementById('tgl_whyChoose').checked;
         tg.showFaq = document.getElementById('tgl_faq').checked;
+        tg.showFooter = document.getElementById('tgl_footer').checked;
+        } catch(e) { console.log('Toggle save error', e); }
 
-        tg.showPartnerLogo = document.getElementById('adminShowLogo').checked;
-        tg.showSocialProof = document.getElementById('adminShowProof').checked;
-        tg.showFooterKrafton = document.getElementById('adminShowKrafton').checked;
-
-        // UPI Toggles Save
-        var getChk = function(id){ var e=document.getElementById(id); return e ? e.checked : true; };
-        tg.showUpiGrid = getChk('tgl_showUpiGrid');
-        tg.showUpiPhonePe = getChk('tgl_showUpiPhonePe');
-        tg.showUpiGPay = getChk('tgl_showUpiGPay');
-        tg.showUpiPaytm = getChk('tgl_showUpiPaytm');
-        tg.showUpiAmazonPay = getChk('tgl_showUpiAmazonPay');
-        tg.showUpiMobiKwik = getChk('tgl_showUpiMobiKwik');
-        tg.showUpiWhatsapp = getChk('tgl_showUpiWhatsapp');
-        tg.showUpiOther = getChk('tgl_showUpiOther');
-        
-        window.siteConfig.policies.showTerms = document.getElementById('adminShowTerms').checked;
-        window.siteConfig.policies.showPrivacy = document.getElementById('adminShowPrivacy').checked;
-        window.siteConfig.policies.showRefund = document.getElementById('adminShowRefund').checked;
-        window.siteConfig.policies.showShipping = document.getElementById('adminShowShipping').checked;
-        window.siteConfig.policies.showContact = document.getElementById('adminShowContact').checked;
-        window.siteConfig.policies.contentTerms = document.getElementById('adminContentTerms').value.trim() || defaultAdminConfig.policies.contentTerms;
-        window.siteConfig.policies.contentPrivacy = document.getElementById('adminContentPrivacy').value.trim() || defaultAdminConfig.policies.contentPrivacy;
-        window.siteConfig.policies.contentRefund = document.getElementById('adminContentRefund').value.trim() || defaultAdminConfig.policies.contentRefund;
-        window.siteConfig.policies.contentShipping = document.getElementById('adminContentShipping').value.trim() || defaultAdminConfig.policies.contentShipping;
-        window.siteConfig.policies.contentContact = document.getElementById('adminContentContact').value.trim() || defaultAdminConfig.policies.contentContact;
-
-        localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(window.siteConfig));
-
+        // FIXED: Save ONLY to Firebase, NOT to localStorage (as per user request #7)
+        // FIXED: After save, reload site
         if(window.saveConfigToDB) {
             const success = await window.saveConfigToDB(window.siteConfig);
-            if(success) { btn.innerHTML = 'Saved to Database! <i class="fas fa-check"></i>'; btn.style.background = 'var(--success)'; btn.style.color = '#000';
-            } else { btn.innerHTML = 'Saved Locally Only'; alert("Database save failed. Check console or make sure Firebase is configured."); }
-        } else { btn.innerHTML = 'Saved Locally'; }
-
-        setTimeout(() => {
-            btn.innerHTML = originalText; btn.style.background = 'var(--primary)'; btn.style.color = '#000'; btn.disabled = false;
-            window.closeModal('adminPanelModal'); window.applyUISettings(); window.injectDynamicStatusUI(); window.renderSitePacks();
-        }, 1500);
+            if(success) { 
+                btn.innerHTML = 'Saved! Reloading... <i class="fas fa-check"></i>'; 
+                btn.style.background = 'var(--success)'; 
+                btn.style.color = '#000';
+                setTimeout(() => {
+                    location.reload();
+                }, 800);
+            } else { 
+                btn.innerHTML = 'Save Failed'; 
+                btn.style.background = 'var(--error)';
+                btn.disabled = false;
+                alert("Database save failed. Check Firebase config.");
+                setTimeout(() => { btn.innerHTML = originalText; btn.style.background = 'var(--primary)'; btn.style.color = '#000'; btn.disabled = false; }, 2000);
+            }
+        } else {
+            alert("Firebase not configured");
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
     }
+
 
         window.renderSitePacks = function() {
         const trialGrid = document.getElementById('trialPacksGrid'); const bulkGrid = document.getElementById('bulkPacksGrid');
@@ -4710,7 +4731,7 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
             `;
             const isFree = pack.price === 0;
             const packDataStr = encodeURIComponent(JSON.stringify(pack));
-            let ucLogoSrc = pack.packImage || window.siteConfig.images.ucLogo || 'uc-logo.webp';
+            const ucLogoSrc = pack.packImage || window.siteConfig.images.ucLogo || 'uc-logo.webp';
             const displayUc = (typeof getPackDisplayText === 'function') ? getPackDisplayText(pack.uc) : (pack.uc + ' UC');
             const totalUcVal = (typeof getPackTotalUc === 'function') ? getPackTotalUc(pack.uc) : '';
             const sUc = String(pack.uc || '');
@@ -5106,7 +5127,7 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
     const uidInput = document.getElementById('uid'); const ignInput = document.getElementById('ign'); const uidIcon = document.getElementById('uidIcon');
     const ignIcon = document.getElementById('ignIcon'); const uidError = document.getElementById('uidError');
 
-    // ===== NEW UID VERIFY LOGIC - FAST VERSION - GOOGLE SCRIPT REMOVED =====
+    // ===== NEW UID VERIFY LOGIC - FIXED: No Google Script, Instant, Full Name Support =====
     const NEXTLEVEL_API_DIRECT = "https://nextlevelbgmizone.com/api/verify-player";
     const regexPattern = "^[0-9]{8,12}$";
     const regexIndicator = document.getElementById('regex-indicator');
@@ -5134,21 +5155,24 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
     function extractNameFromText(text) {
         if (!text) return "";
         text = String(text);
+        // FIXED: Support unicode and full names up to 64 chars, not 20
         var patterns = [
+            /verified!\s*([^\n\r]+)/i,
             /Player Name\s*[:\-]\s*([^\n\r,]+)/i,
             /IGN\s*[:\-]\s*([^\n\r,]+)/i,
             /Username\s*[:\-]\s*([^\n\r,]+)/i,
             /Name\s*[:\-]\s*([^\n\r,]+)/i,
-            /"([A-Za-z0-9_\- ]{3,20})"\s*verified/i,
             /Player\s+"([^"]+)"/i,
-            /Player\s+([A-Za-z0-9_\- ]{3,20})\s+verified/i,
-            /verified[^A-Za-z0-9]*([A-Za-z0-9_]{3,20})/i
+            /Player\s+([^\n\r]+)\s+verified/i
         ];
         for (var i = 0; i < patterns.length; i++) {
             var m = text.match(patterns[i]);
             if (m && m[1]) {
-                var name = m[1].trim().replace(/["']/g, "").trim();
-                if (name.length >= 2 && name.length <= 30 && name.toLowerCase() !== "player") return name;
+                var name = m[1].trim().replace(/^[\"'\s:]+|[\"'\s:]+$/g, "").trim();
+                name = name.split(/[\n\r]/)[0].trim();
+                // Clean extra quotes
+                name = name.replace(/^['"]+|['"]+$/g, '').trim();
+                if (name.length >= 2 && name.length <= 64 && name.toLowerCase() !== "player") return name;
             }
         }
         return "";
@@ -5157,9 +5181,10 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
     function isValidPlayerName(name) {
         if (!name) return false;
         name = String(name).trim();
-        if (name.length < 2 || name.length > 32) return false;
-        if (name.toLowerCase() === "player") return false;
-        if (name.toLowerCase() === "verified") return false;
+        // FIXED: Allow up to 64 chars for full names, support unicode (e.g., SūYūNūOūX)
+        if (name.length < 2 || name.length > 64) return false;
+        var lower = name.toLowerCase();
+        if (lower === "player" || lower === "verified" || lower === "unknown") return false;
         if (/^\d+$/.test(name)) return false;
         if (!/[^\s]{2,}/.test(name)) return false;
         return true;
@@ -5172,33 +5197,39 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
         try {
             if (typeof json === 'object' && json !== null) {
                 var rawSuccess = json.success === true || json.success === "true" || json.success === 1 || json.success === "1" || json.verified === true || json.status === true || json.status === "success" || json.status === "verified";
-                message = json.message || json.msg || json.error || (json.data && json.data.message) || "";
-                if (json.data && json.data.name) playerName = json.data.name;
-                else if (json.data && json.data.username) playerName = json.data.username;
-                else if (json.data && json.data.playerName) playerName = json.data.playerName;
-                else if (json.player && json.player.username) playerName = json.player.username;
-                else if (json.player && json.player.name) playerName = json.player.name;
-                else if (json.username) playerName = json.username;
-                else if (json.name) playerName = json.name;
-                else if (json.ign) playerName = json.ign;
-                else if (json.playerName) playerName = json.playerName;
-                
+                message = json.message || json.msg || json.error || json.data?.message || "";
+                // FIXED: Keep full unicode name, don't truncate
+                if (json.data && typeof json.data === 'object') {
+                    playerName = json.data.name || json.data.username || json.data.playerName || json.data.ign || "";
+                }
+                if (!playerName) {
+                    if (json.player && typeof json.player === 'object') {
+                        playerName = json.player.username || json.player.name || "";
+                    }
+                    if (!playerName) {
+                        playerName = json.username || json.name || json.ign || json.playerName || "";
+                    }
+                }
+                playerName = String(playerName || "").trim();
+                // Remove surrounding quotes if any
+                playerName = playerName.replace(/^['"]+|['"]+$/g, '').trim();
+
                 if (!isValidPlayerName(playerName) && message) {
                     var ext = extractNameFromText(message);
                     if (ext) playerName = ext;
                 }
                 if (!isValidPlayerName(playerName) && message) {
-                    var m = message.match(/verified!\s*(.+)$/i);
+                    var m = message.match(/verified!\s*([^\n\r]+)/i);
                     if (m && m[1]) {
-                        var cand = m[1].trim().replace(/["']/g,"").split(/[\n\r]+/)[0].trim();
-                        if (cand.length >=2 && cand.length <= 50) playerName = cand;
+                        var cand = m[1].trim().replace(/^["']+|["']+$/g, "").split(/[\n\r]+/)[0].trim();
+                        if (cand.length >=2 && cand.length <= 64) playerName = cand;
                     }
                 }
                 if (!playerName && rawText) {
                     playerName = extractNameFromText(rawText);
                     if (!playerName) {
-                        var m2 = rawText.match(/verified!\s*(.+)$/i);
-                        if (m2 && m2[1]) playerName = m2[1].trim().substring(0,30);
+                        var m2 = rawText.match(/verified!\s*([^\n\r]+)/i);
+                        if (m2 && m2[1]) playerName = m2[1].trim().substring(0,64).trim();
                     }
                 }
                 if (isValidPlayerName(playerName)) {
@@ -5206,77 +5237,55 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
                 } else {
                     isSuccess = rawSuccess;
                 }
-                if (!isSuccess && message && message.toLowerCase().includes('verif') && playerName) {
+                if (isSuccess && playerName) {
+                    // keep isSuccess true even if message says something else
+                }
+                if (!isSuccess && message && message.toLowerCase().includes('verif') && playerName && isValidPlayerName(playerName)) {
                     isSuccess = true;
                 }
             } else if (rawText) {
                 playerName = extractNameFromText(rawText);
                 if (!playerName) {
-                    var m3 = rawText.match(/verified!\s*(.+)$/i);
-                    if (m3 && m3[1]) playerName = m3[1].trim().substring(0,30);
+                    var m3 = rawText.match(/verified!\s*([^\n\r]+)/i);
+                    if (m3 && m3[1]) playerName = m3[1].trim().substring(0,64).trim();
                 }
                 if (playerName) isSuccess = true;
-                message = rawText.slice(0,200);
+                message = rawText.slice(0,300);
             }
         } catch(e) {}
         return { success: isSuccess && isValidPlayerName(playerName), name: playerName ? playerName.trim() : "", message: message || (playerName ? "Player " + playerName + " verified!" : "") };
     }
 
     async function verifyViaDirectAPI(pid) {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(function(){ controller.abort(); }, 4000);
         try {
+            // FIXED: Single fast request with 6 sec timeout, no double fetch
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 6000);
+            var form = new URLSearchParams();
+            form.append("section_id", "1");
+            form.append("player_id", pid);
             var res = await fetch(NEXTLEVEL_API_DIRECT, {
                 method: "POST",
-                headers: { "Content-Type": "application/json", "Accept": "application/json" },
-                body: JSON.stringify({ section_id: "1", player_id: pid }),
+                headers: { "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json" },
+                body: form.toString(),
                 signal: controller.signal,
-                mode: "cors",
-                cache: "no-store"
+                cache: 'no-store'
             });
             clearTimeout(timeoutId);
             var text = await res.text();
             var json = null;
             try { json = JSON.parse(text); } catch(e) {}
             var parsed = parseNextLevelResponse(json, text);
-            if (parsed.success && parsed.name) {
-                return { success: true, name: parsed.name, message: parsed.message || ("Player " + parsed.name + " verified!"), uid: pid, source: "direct" };
-            }
+            if (parsed.success && parsed.name) return { success: true, name: parsed.name, message: parsed.message || ("Player " + parsed.name + " verified!"), uid: pid, source: "direct" };
             return parsed.success && parsed.name ? { success: true, name: parsed.name, message: parsed.message, uid: pid } : null;
         } catch(e) {
-            clearTimeout(timeoutId);
-            if (e.name === 'AbortError') {
-                return { success: false, message: 'Verification timeout, try again' };
-            }
-            try {
-                const controller2 = new AbortController();
-                const timeoutId2 = setTimeout(function(){ controller2.abort(); }, 3500);
-                var form = new URLSearchParams();
-                form.append("section_id", "1");
-                form.append("player_id", pid);
-                var res2 = await fetch(NEXTLEVEL_API_DIRECT, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json" },
-                    body: form.toString(),
-                    signal: controller2.signal,
-                    mode: "cors",
-                    cache: "no-store"
-                });
-                clearTimeout(timeoutId2);
-                var text2 = await res2.text();
-                var json2 = null;
-                try { json2 = JSON.parse(text2); } catch(e){}
-                var parsed2 = parseNextLevelResponse(json2, text2);
-                if (parsed2.success && parsed2.name) return { success: true, name: parsed2.name, message: parsed2.message || ("Player " + parsed2.name + " verified!"), uid: pid, source: "direct-form" };
-                return parsed2.success && parsed2.name ? { success: true, name: parsed2.name, message: parsed2.message, uid: pid } : null;
-            } catch(e2) {
-                return null;
-            }
+            return null;
         }
     }
 
     async function callVerifyApi(pid) {
         try {
+            // Cache check - 10 min
             try {
                 var cachedRaw = localStorage.getItem("uid_" + pid);
                 if (cachedRaw) {
@@ -5287,12 +5296,13 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
                 }
             } catch(e) {}
 
+            // FIXED: Only direct API, no Google Script secondary verification (removed as per request)
             var directResult = await verifyViaDirectAPI(pid);
             if (directResult && directResult.success && isValidPlayerName(directResult.name)) {
                 try { localStorage.setItem("uid_" + pid, JSON.stringify({ data: directResult, exp: Date.now() + 600000 })); } catch(e) {}
                 return directResult;
             }
-            return directResult || { success: false, message: 'Invalid UID or network issue. Try again.' };
+            return { success: false, message: directResult?.message || 'Invalid UID or player not found. Please check UID.' };
         } catch(e) {
             return { success: false, message: 'Network error. Try again.' };
         }
@@ -5353,38 +5363,8 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
         if (d3Uid) d3Uid.textContent = currentUid;
         if (d3Ign) d3Ign.textContent = currentIgn;
 
+        // --- INSTANT NAVIGATION: show packs immediately (no waiting) ---
         showStep(2);
-        
-        try {
-            if (cachedPurchasedPacks && Array.isArray(cachedPurchasedPacks)) {
-                applyPurchasedFilter(cachedPurchasedPacks);
-            } else {
-                const lsCached = getCachedPacks(currentUid);
-                if (lsCached) applyPurchasedFilter(lsCached);
-            }
-        } catch(e){}
-
-        try {
-            let purchasedPacks = cachedPurchasedPacks;
-            if (purchasedPacks === null) {
-                if (packsPreloadPromise) {
-                    try { purchasedPacks = await packsPreloadPromise; } 
-                    catch(e) { purchasedPacks = await fetchPurchasedPacks(currentUid); }
-                } else {
-                    purchasedPacks = await fetchPurchasedPacks(currentUid);
-                }
-            } else {
-                if (packsPreloadPromise) 
-
-const verifyPopupEl = document.getElementById('verify-popup');
-    if (verifyPopupEl) {
-        verifyPopupEl.addEventListener('click', function(e) {
-            if (e.target === verifyPopupEl) closeVerifyPopup();
-        });
-    }
-    // ===== END NEW VERIFY LOGIC =====
-
-
 
     const HARDCODED_SHEET_URL = "https://script.google.com/macros/s/AKfycbxZmmaWlqrx9ydYVfO3XkZKh25Oxa_k0XiLNBPbEVEBOwZTlE2qPxF6OEoU-I9oJzLj/exec";
     const HARDCODED_VERIFY_URL = "https://script.google.com/macros/s/AKfycbzX371w86D2MFAGkpbbpYEm5GIvuXeh9BextRnqSLfzBLENLAaIU07T0Cr0nTPNJutQxg/exec";
@@ -6224,8 +6204,7 @@ const verifyPopupEl = document.getElementById('verify-popup');
         window.siteConfig.gameInfo.banners.splice(idx, 1);
         window.renderAdminGameBannersList();
         window.renderGameBanners();
-        // Auto save to localStorage
-        try { localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(window.siteConfig)); } catch(e) {}
+        // FIXED: Don't save to localStorage, only Firebase
         if(window.saveConfigToDB) { window.saveConfigToDB(window.siteConfig); }
     };
 
@@ -6235,7 +6214,6 @@ const verifyPopupEl = document.getElementById('verify-popup');
         window.siteConfig.gameInfo.banners = [];
         window.renderAdminGameBannersList();
         window.renderGameBanners();
-        try { localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(window.siteConfig)); } catch(e) {}
         if(window.saveConfigToDB) { window.saveConfigToDB(window.siteConfig); }
     };
 
@@ -6257,7 +6235,6 @@ const verifyPopupEl = document.getElementById('verify-popup');
                     window.siteConfig.gameInfo.banners = window.siteConfig.gameInfo.banners.concat(processed);
                     window.renderAdminGameBannersList();
                     window.renderGameBanners();
-                    try { localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(window.siteConfig)); } catch(e) { console.log('localStorage save failed', e); }
                     if(window.saveConfigToDB) { window.saveConfigToDB(window.siteConfig).then(r=>console.log('DB save',r)); }
                     event.target.value = '';
                 }
@@ -6300,7 +6277,6 @@ const verifyPopupEl = document.getElementById('verify-popup');
                         window.siteConfig.gameInfo.banners = window.siteConfig.gameInfo.banners.concat(processed);
                         window.renderAdminGameBannersList();
                         window.renderGameBanners();
-                        try { localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(window.siteConfig)); } catch(e) {}
                         if(window.saveConfigToDB) { window.saveConfigToDB(window.siteConfig); }
                         event.target.value = '';
                     }
@@ -6368,7 +6344,6 @@ const verifyPopupEl = document.getElementById('verify-popup');
             // Ensure banners restored if original accidentally cleared
             if(!window.siteConfig.gameInfo.banners || window.siteConfig.gameInfo.banners.length === 0) {
                 window.siteConfig.gameInfo.banners = tempBanners;
-                try { localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(window.siteConfig)); } catch(e) {}
                 if(window.saveConfigToDB) await window.saveConfigToDB(window.siteConfig);
             }
             // Force re-render banners after save
