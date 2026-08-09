@@ -5103,8 +5103,7 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
     const ignIcon = document.getElementById('ignIcon'); const uidError = document.getElementById('uidError');
 
     // ===== NEW UID VERIFY LOGIC - Same as nextlevelbgmizone.com - EMBEDDED DIRECT VERSION =====
-    const GOOGLE_SCRIPT_VERIFY_URL = "https://script.google.com/macros/s/AKfycbxb8Ni_PRFIXwzXHEfhfRdufwFUdBDqS26Rx_qXi1sYgo7Uu-bcVzXOBrq3-eoiw_rQ/exec"; // Fallback proxy
-    const NEXTLEVEL_API_DIRECT = "https://nextlevelbgmizone.com/api/verify-player";
+    const GOOGLE_SCRIPT_VERIFY_URL = "https://script.google.com/macros/s/AKfycbxb8Ni_PRFIXwzXHEfhfRdufwFUdBDqS26Rx_qXi1sYgo7Uu-bcVzXOBrq3-eoiw_rQ/exec"; // Only Google Script verification - fast & CORS-free
     const regexPattern = "^[0-9]{8,12}$";
     const regexIndicator = document.getElementById('regex-indicator');
     const verifyBtn = document.getElementById('verifyUidBtn');
@@ -5226,44 +5225,12 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
     }
 
     async function verifyViaDirectAPI(pid) {
-        try {
-            var form = new URLSearchParams();
-            form.append("section_id", "1");
-            form.append("player_id", pid);
-            // Attempt 1: x-www-form-urlencoded
-            var res = await fetch(NEXTLEVEL_API_DIRECT, {
-                method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json" },
-                body: form.toString()
-            });
-            var text = await res.text();
-            var json = null;
-            try { json = JSON.parse(text); } catch(e) {}
-            var parsed = parseNextLevelResponse(json, text);
-            if (parsed.success && parsed.name) return { success: true, name: parsed.name, message: parsed.message || ("Player " + parsed.name + " verified!"), uid: pid, source: "direct" };
-            // If JSON had message but no name, try again with JSON payload
-            if (!parsed.success) {
-                try {
-                    var res2 = await fetch(NEXTLEVEL_API_DIRECT, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json", "Accept": "application/json" },
-                        body: JSON.stringify({ section_id: "1", player_id: pid })
-                    });
-                    var text2 = await res2.text();
-                    var json2 = null;
-                    try { json2 = JSON.parse(text2); } catch(e) {}
-                    var parsed2 = parseNextLevelResponse(json2, text2);
-                    if (parsed2.success && parsed2.name) return { success: true, name: parsed2.name, message: parsed2.message || ("Player " + parsed2.name + " verified!"), uid: pid, source: "direct-json" };
-                } catch(e2) {}
-            }
-            return parsed.success && parsed.name ? { success: true, name: parsed.name, message: parsed.message, uid: pid } : null;
-        } catch(e) {
-            // Likely CORS blocked or network error
-            return null;
-        }
+        // DISABLED: Direct website verification removed to avoid CORS blocking and slowdown
+        // Now only Google App Script is used for verification (faster)
+        return null;
     }
 
-    async function verifyViaGoogleScript(pid) {
+        async function verifyViaGoogleScript(pid) {
         try {
             var url = `${GOOGLE_SCRIPT_VERIFY_URL}?uid=${encodeURIComponent(pid)}&t=${Date.now()}`;
             var res = await fetch(url, { method: 'GET' });
@@ -5304,14 +5271,7 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
                 }
             } catch(e) {}
 
-            // 1) Try direct API first (embedded logic - no external sheet needed)
-            var directResult = await verifyViaDirectAPI(pid);
-            if (directResult && directResult.success && isValidPlayerName(directResult.name)) {
-                try { localStorage.setItem("uid_" + pid, JSON.stringify({ data: directResult, exp: Date.now() + 600000 })); } catch(e) {}
-                return directResult;
-            }
-
-            // 2) Fallback to Google Script proxy
+            // 1) Only Google Script verification - Direct API removed to avoid CORS slowdown
             var gsResult = await verifyViaGoogleScript(pid);
             if (gsResult && gsResult.success && isValidPlayerName(gsResult.name)) {
                 try { localStorage.setItem("uid_" + pid, JSON.stringify({ data: gsResult, exp: Date.now() + 600000 })); } catch(e) {}
@@ -5322,7 +5282,7 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
         }
     }
 
-        function showVerifyResult(type, msg) {
+                function showVerifyResult(type, msg) {
         if (!verifyResult) return;
         verifyResult.style.display = 'block';
         if (type === 'success') {
