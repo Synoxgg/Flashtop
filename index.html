@@ -1438,6 +1438,7 @@
       <img src="flashtop.webp" id="dispOfflineLogo" alt="FlashTOP Logo" style="max-width: 180px; cursor: pointer; pointer-events: auto !important; touch-action: manipulation; -webkit-tap-highlight-color: transparent;" onclick="handleLogoClick(event)">
   </div>
 
+  
   <div class="floating-particles" id="floatingParticles"></div>
 
   <div class="social-proof" id="socialProof">
@@ -2077,6 +2078,8 @@
               </div>
           </div>
 
+          
+
           <h4 class="admin-section-title" style="color: #00ffcc;">🖼️ Website Images Upload</h4>
           <p style="font-size: 11px; color: #aaa; margin-bottom: 10px;">Upload image files directly to change site images. Recommended size: under 500kb.</p>
           <div class="admin-subsection" style="border-left: 2px solid #00ffcc; display:flex; flex-direction:column; gap:15px;">
@@ -2573,33 +2576,7 @@
             }, 500);
         }
     }
-  
-
-    // FIXED V3: Safe localStorage save that handles quota exceeded for large banners/packImages
-    window.safeSaveToLocalStorage = function(config) {
-        try {
-            localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(config));
-            return true;
-        } catch(e) {
-            console.warn('LocalStorage quota exceeded, trying without banners', e);
-            try {
-                const slim = JSON.parse(JSON.stringify(config));
-                if(slim.gameInfo && slim.gameInfo.banners) slim.gameInfo.banners = [];
-                // Also strip packImages if still too large
-                if(slim.trialPacks) slim.trialPacks.forEach(p=>{ if(p.packImage) delete p.packImage; });
-                if(slim.bulkPacks) slim.bulkPacks.forEach(p=>{ if(p.packImage) delete p.packImage; });
-                localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(slim));
-                console.log('Saved slim config without images');
-                return true;
-            } catch(e2) {
-                console.warn('Even slim save failed', e2);
-                try { localStorage.removeItem('ucifyAdminConfigV2'); } catch(e3){}
-                return false;
-            }
-        }
-    };
-
-</script>
+  </script>
 
   
 <script>
@@ -2632,7 +2609,8 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
 </script>
 <script type="module">
     const safeDefault = window.defaultAdminConfig || window.__FALLBACK_PACKS || { 
-      texts:{}, faqs:[], toggles:{}, policies:{}, shopTiming:{}, adminAuth:{}, images:{}, gameInfo:{banners:[]}, trialPacks: (window.__FALLBACK_PACKS && window.__FALLBACK_PACKS.trialPacks) || [],
+      texts:{}, faqs:[], toggles:{}, policies:{}, shopTiming:{}, adminAuth:{}, images:{}, gameInfo:{banners:[]}, 
+      trialPacks: (window.__FALLBACK_PACKS && window.__FALLBACK_PACKS.trialPacks) || [],
       bulkPacks: (window.__FALLBACK_PACKS && window.__FALLBACK_PACKS.bulkPacks) || []
     };
     const defaultAdminConfig = window.defaultAdminConfig || safeDefault;
@@ -2756,11 +2734,10 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
 
                     window.siteConfig = dbConfig;
                     // FIXED: Save latest admin config to localStorage so new users on next visit get instant correct data
-                    window.safeSaveToLocalStorage(dbConfig)
+                    try { localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(dbConfig)); } catch(e) {}
                     
-                    
-                    // Delay render to ensure DOM is fully ready and avoid race conditions
-                    setTimeout(() => {
+                    // Delay render to ensure DOM is fully ready and avoid race conditions - V3 with banner/pack image preload
+                    setTimeout(async () => {
                         try {
                             if(typeof window.applyUISettings === 'function') window.applyUISettings();
                             if(typeof window.renderSitePacks === 'function') window.renderSitePacks();
@@ -2768,16 +2745,17 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
                             if(typeof window.renderAdminRzpLinksList === 'function') window.renderAdminRzpLinksList();
                             if(typeof window.renderAdminCreatorUidsList === 'function') window.renderAdminCreatorUidsList();
                             if(typeof window.renderAdminFaqsList === 'function') window.renderAdminFaqsList();
-                            if(typeof window.renderGameBanners === 'function') window.renderGameBanners();
                             if(typeof window.injectDynamicStatusUI === 'function') window.injectDynamicStatusUI();
+                            if(typeof window.renderGameBanners === 'function') window.renderGameBanners();
+                            if(typeof window.renderAdminGameBannersList === 'function') window.renderAdminGameBannersList();
+                            if(typeof window.preloadDynamicImages === 'function') {
+                                try { await window.preloadDynamicImages(); } catch(e){}
+                            }
                             window._uiReady = true;
                         } catch(e) { console.log('UI apply error', e); window._uiReady = true; }
-                        // FIXED V3: Preload all images (banners + packImages) before hiding loader - ensures consistency
-                        window.preloadAllSiteImages().then(() => {
-                            window._firebaseConfigLoaded = true;
-                            if(window._tryHideLoader) window._tryHideLoader();
-                        });
-                    }, 150);
+                        window._firebaseConfigLoaded = true;
+                        if(window._tryHideLoader) window._tryHideLoader();
+                    }, 200);
                     
                 } else {
                     console.log('No Firestore config found, creating from local/default');
@@ -2787,28 +2765,23 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
                     try { 
                         if(typeof window.applyUISettings === 'function') window.applyUISettings(); 
                         if(typeof window.renderSitePacks === 'function') window.renderSitePacks();
-                        if(typeof window.renderGameBanners === 'function') window.renderGameBanners();
                         window._uiReady = true;
                     } catch(e){ console.log('Render fallback error', e); window._uiReady = true; }
-                    window.preloadAllSiteImages().then(() => {
-                        window._firebaseConfigLoaded = true;
-                        if(window._tryHideLoader) window._tryHideLoader();
-                    });
+                    window._firebaseConfigLoaded = true;
+                    if(window._tryHideLoader) window._tryHideLoader();
                 }
-                }, (error) => {
+                
+            }, (error) => {
                 console.error("Live Database Listener Error:", error);
                 try { 
                     if(typeof window.applyUISettings === 'function') window.applyUISettings(); 
                     if(typeof window.renderSitePacks === 'function') window.renderSitePacks();
-                    if(typeof window.renderGameBanners === 'function') window.renderGameBanners();
                     window._uiReady = true;
                 } catch(e) {}
-                window.preloadAllSiteImages().then(() => {
-                    window._firebaseConfigLoaded = true;
-                    if(window._tryHideLoader) window._tryHideLoader();
-                });
+                window._firebaseConfigLoaded = true;
+                if(window._tryHideLoader) window._tryHideLoader();
             });
-});
+        });
     }
   </script>
 
@@ -2819,6 +2792,7 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
         creatorUids: [],
         razorpayApiUrl: "https://script.google.com/macros/s/AKfycby9ZtsDvV3Aqdg1XIfeEvt3dQQGXNn4inKC04RZjTGNxipHwlDyMhMx5iABq_kEdWKwzg/exec", 
         shopTiming: { startHour: 0, endHour: 9 },
+        
         images: {
             logo: "flashtop.webp", partner: "bgmi-official.webp", paymentModes: "accepted-payment-modes.webp", signature: "signature.webp",
             uidScreenshot: "uid-ss.webp", ignScreenshot: "bgminame-ss.webp", ucLogo: "uc-logo.webp",
@@ -2933,7 +2907,7 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
       window.siteConfig.bulkPacks = JSON.parse(JSON.stringify(defaultAdminConfig.bulkPacks));
     }
     // Always save corrected config back
-    try { window.safeSaveToLocalStorage(window.siteConfig); } catch(e){}
+    try { localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(window.siteConfig)); } catch(e){}
 
     
     // Auto-migrate new object properties safely
@@ -2952,7 +2926,6 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
             ].filter(f => f.q && f.a);
         }
     }
-    
     if(!window.siteConfig.images) window.siteConfig.images = defaultAdminConfig.images;
     for(let k in defaultAdminConfig.images) { if(window.siteConfig.images[k] === undefined) window.siteConfig.images[k] = defaultAdminConfig.images[k]; }
     
@@ -3650,7 +3623,7 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
                     var canvas = document.createElement('canvas');
                     let width = img.width; let height = img.height;
                     // For 2:1 banners, keep larger size for quality
-                    const maxSize = 700;
+                    const maxSize = 1000;
                     if (width > maxSize || height > maxSize) {
                         if (width > height) { height *= maxSize / width; width = maxSize; }
                         else { width *= maxSize / height; height = maxSize; }
@@ -3658,7 +3631,7 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
                     canvas.width = width; canvas.height = height;
                     var ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
-                    var base64 = canvas.toDataURL('image/webp', 0.5)
+                    var base64 = canvas.toDataURL('image/webp', 0.6) // FIXED;
                     processed.push(base64);
                     remaining--;
                     if(remaining === 0) {
@@ -3676,8 +3649,6 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
         });
     };
 
-    reader.readAsDataURL(file);
-    };
 
     window.renderSiteFaqs = function() {
         const container = document.getElementById('faqListContainer');
@@ -3933,8 +3904,7 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
             // Render banners slider
             if(typeof window.renderGameBanners === 'function') window.renderGameBanners();
         } catch(e) { console.log('Game info apply error', e); }
-
-        };
+};
 
     window.injectDynamicStatusUI = function() {
       const vStatus = document.getElementById('verificationStatus');
@@ -3945,8 +3915,7 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
       }
       if(typeof hidePaymentWaitingLoader === 'function') hidePaymentWaitingLoader();
     }
-
-    window.openModal = function(modalId, isBack = false) { 
+window.openModal = function(modalId, isBack = false) { 
         if (!isBack) {
             try{ history.pushState({ modal: modalId, type: 'modal' }, document.title, window.location.href); }catch(e){}
         }
@@ -4012,7 +3981,6 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
     function openAdminPanel(isReplaced = false) {
         const validU = window.siteConfig.adminAuth?.u || defaultAdminConfig.adminAuth.u;
         document.getElementById('adminSetUser').placeholder = "Current: " + atob(validU); document.getElementById('adminSetUser').value = ""; document.getElementById('adminSetPass').value = "";
-        
         document.getElementById('previewLogo').src = window.siteConfig.images.logo || 'flashtop.webp';
         document.getElementById('previewPartner').src = window.siteConfig.images.partner || 'bgmi-official.webp';
         document.getElementById('previewPaymentModes').src = window.siteConfig.images.paymentModes || 'accepted-payment-modes.webp';
@@ -4381,7 +4349,7 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
             img.onload = function() {
                 const canvas = document.createElement('canvas');
                 let width = img.width; let height = img.height;
-                const maxSize = 128; // FIXED V3 reduced for Firebase
+                const maxSize = 128; // FIXED reduced for Firebase
                 if(width > maxSize || height > maxSize) {
                     if(width > height) { height *= maxSize / width; width = maxSize; }
                     else { width *= maxSize / height; height = maxSize; }
@@ -4389,7 +4357,7 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
                 canvas.width = width; canvas.height = height;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
-                const base64 = canvas.toDataURL('image/webp', 0.5)
+                const base64 = canvas.toDataURL('image/webp', 0.6) // FIXED;
                 if(!window.siteConfig[type][packIndex]) return;
                 window.siteConfig[type][packIndex].packImage = base64;
                 window.renderAdminPacksList();
@@ -4477,7 +4445,6 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
         window.siteConfig.razorpayApiUrl = document.getElementById('adminRazorpayApi').value.trim();
         window.siteConfig.shopTiming.startHour = parseInt(document.getElementById('adminNightStart').value) || 0;
         window.siteConfig.shopTiming.endHour = parseInt(document.getElementById('adminNightEnd').value) || 9;
-        
         if(!window.siteConfig.gameInfo) window.siteConfig.gameInfo = {};
         var gNameEl = document.getElementById('adminGameName');
         var gPubEl = document.getElementById('adminGamePublisher');
@@ -4744,62 +4711,50 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
       }
     }
 
-    
-    // FIXED V3: Robust loader - waits for FULL Firebase config + images (banners + packImages)
+    // FIXED: Loader now waits for admin config (Firebase) + ALL dynamic images - V3
+    // Issue 1 & 3 Fix: Ensure banners + pack UC images are fully loaded in front loader
     window._domReady = false;
     window._firebaseConfigLoaded = false;
     window._uiReady = false;
     window._windowLoaded = false;
     window._loaderHideAttempted = false;
     window._imagesPreloaded = false;
-    
-    window.preloadAllSiteImages = function() {
+
+    window.preloadDynamicImages = function() {
         return new Promise((resolve) => {
             try {
                 const urls = [];
-                // Game banners
-                if (window.siteConfig && window.siteConfig.gameInfo && Array.isArray(window.siteConfig.gameInfo.banners)) {
-                    window.siteConfig.gameInfo.banners.forEach(b => { if(b && typeof b === 'string') urls.push(b); });
-                }
-                // Pack images
-                if (window.siteConfig) {
-                    const allPacks = [...(window.siteConfig.trialPacks||[]), ...(window.siteConfig.bulkPacks||[])];
-                    allPacks.forEach(p => { if(p && p.packImage) urls.push(p.packImage); });
-                    // UC logo
-                    if (window.siteConfig.images && window.siteConfig.images.ucLogo) urls.push(window.siteConfig.images.ucLogo);
-                    if (window.siteConfig.images && window.siteConfig.images.gameLogo) urls.push(window.siteConfig.images.gameLogo);
-                }
-                if (urls.length === 0) { window._imagesPreloaded = true; resolve(); return; }
+                // Banners from admin panel
+                const banners = (window.siteConfig && window.siteConfig.gameInfo && window.siteConfig.gameInfo.banners) || [];
+                banners.forEach(b => { if(b && typeof b === 'string' && b.length > 100) urls.push(b); });
+                // Pack UC images (separate per pack)
+                const allPacks = [...(window.siteConfig.trialPacks||[]), ...(window.siteConfig.bulkPacks||[])];
+                allPacks.forEach(p => { if(p.packImage && typeof p.packImage === 'string' && p.packImage.length > 100) urls.push(p.packImage); });
+                if(urls.length === 0) { window._imagesPreloaded = true; resolve(); return; }
                 let loaded = 0;
                 const total = urls.length;
-                const checkDone = () => { loaded++; if (loaded >= total) { window._imagesPreloaded = true; resolve(); } };
-                // timeout fallback 3s
-                setTimeout(() => { window._imagesPreloaded = true; resolve(); }, 3000);
+                let done = false;
+                const finish = () => { if(!done){ done=true; window._imagesPreloaded=true; resolve(); } };
+                const timer = setTimeout(finish, 4000);
                 urls.forEach(src => {
                     const img = new Image();
-                    img.onload = checkDone;
-                    img.onerror = checkDone;
-                    img.src = src;
+                    img.onload = img.onerror = () => {
+                        loaded++;
+                        if(loaded >= total) { clearTimeout(timer); finish(); }
+                    };
+                    try { img.src = src; } catch(e){ loaded++; if(loaded>=total){ clearTimeout(timer); finish(); } }
                 });
-            } catch(e) { window._imagesPreloaded = true; resolve(); }
+            } catch(e){ window._imagesPreloaded=true; resolve(); }
         });
     };
-    
-    
-    window._tryHideLoader = function() {
-        // Only hide when DOM ready + Firebase config confirmed + UI applied
+
+    window._tryHideLoader = async function() {
         if(window._domReady && window._firebaseConfigLoaded && window._uiReady) {
             if(window._loaderHideAttempted) return;
-            // If images not yet preloaded, start preload and wait
-            if(!window._imagesPreloaded) {
-                window.preloadAllSiteImages().then(() => {
-                    if(window._loaderHideAttempted) return;
-                    window._loaderHideAttempted = true;
-                    setTimeout(() => { hideInitialLoader(); }, 250);
-                });
-                return;
-            }
             window._loaderHideAttempted = true;
+            try { await window.preloadDynamicImages(); } catch(e){}
+            try { if(typeof window.renderGameBanners === 'function') window.renderGameBanners(); } catch(e){}
+            try { if(typeof window.renderSitePacks === 'function') window.renderSitePacks(); } catch(e){}
             setTimeout(() => {
                 hideInitialLoader();
             }, 350);
@@ -4807,14 +4762,12 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
     };
 
     // Also track window load for images
-
     window.addEventListener('load', () => {
         window._windowLoaded = true;
+        // if everything else ready, try hide
         window._tryHideLoader();
     });
 
-
-    
     document.addEventListener('DOMContentLoaded', () => {
       if ('scrollRestoration' in history) { history.scrollRestoration = 'manual'; }
       history.replaceState({ step: 1, type: 'step' }, document.title, window.location.href);
@@ -4822,35 +4775,31 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
       const n1 = document.getElementById('next1');
       if(n1) n1.disabled = true;
       window._domReady = true;
-      window._imagesPreloaded = false;
 
-      // FIXED V3: Don't mark _uiReady true from cached - always wait for Firebase for banners & packImages
+      // If we already have cached config (returning user), render it immediately to avoid blank screen,
+      // but still keep loader until Firebase confirms latest admin changes
       const hasCachedConfig = !!localStorage.getItem('ucifyAdminConfigV2');
       if(hasCachedConfig) {
           try { 
             if(typeof window.applyUISettings === 'function') window.applyUISettings(); 
             if(typeof window.renderSitePacks === 'function') window.renderSitePacks();
-            if(typeof window.renderGameBanners === 'function') window.renderGameBanners();
-            // _uiReady stays false until Firebase confirms
+            window._uiReady = true;
           } catch(e) {}
       }
-      // Fallback: if Firebase fails / offline, render after 8s and hide loader
+      // Fallback: if Firebase fails / offline, render after 10s and hide loader (increased from 5.5s)
       setTimeout(() => {
         if (!window._firebaseConfigLoaded) {
           console.warn('Firebase timeout, rendering with cached/default config');
           try { 
             if(typeof window.applyUISettings === 'function') window.applyUISettings(); 
             if(typeof window.renderSitePacks === 'function') window.renderSitePacks();
-            if(typeof window.renderGameBanners === 'function') window.renderGameBanners();
             window._uiReady = true;
-          } catch(e) { window._uiReady = true; }
+          } catch(e) {}
           window._firebaseConfigLoaded = true;
-          window.preloadAllSiteImages().then(() => {
-            if(window._tryHideLoader) window._tryHideLoader();
-          });
+          window._tryHideLoader();
         }
-      }, 8000);
-      // Force render default packs immediately so step 2 never blank (but loader stays)
+      }, 10000);
+      // Force render default packs immediately so step 2 never blank
       try { 
         if(!window.siteConfig.trialPacks || window.siteConfig.trialPacks.length===0) {
           window.siteConfig.trialPacks = (window.defaultAdminConfig && window.defaultAdminConfig.trialPacks) || (window.__FALLBACK_PACKS && window.__FALLBACK_PACKS.trialPacks) || [];
@@ -4859,10 +4808,14 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
           window.siteConfig.bulkPacks = (window.defaultAdminConfig && window.defaultAdminConfig.bulkPacks) || (window.__FALLBACK_PACKS && window.__FALLBACK_PACKS.bulkPacks) || [];
         }
         if(typeof window.renderSitePacks === 'function') window.renderSitePacks();
+        // mark UI ready even for fallback, but loader will still wait for firebase unless timeout
+        if(!hasCachedConfig) {
+            window._uiReady = true;
+        }
       } catch(e){ console.log('Initial render error', e); }
+      // Try hide if firebase already loaded before DOM
       window._tryHideLoader();
     });
-
 
     const gamingNames = [ "亗『MÂFÎÂ亗", "TOXIC彡KD", "77・playzYT", "SK๛play๛Live", "千ムＩＲＹＹ", "IQōShāDøwW", "LÙÇÍFËR〆", "Mâhïmâ", "DEMØN丨DEEPAK", "亗CZxAnurag亗", "FRSTxZGOD", "FGxWONGPLAYzzz", "GÕD〤RÚSHËR", "IGメABHAY", "MR々ŁEGENÐ", "VÌNNÍ乂PLAYZ", "KGF๛OP亗×", "ROYALツKUNAL20", "『RÁGNÁR』", "GLXY丨DANGER", "SHADOW๛RIVEN", "會DAKU父", "LEGEND丶OPP", "SAʀDAʀJi", "HAWK么HARSH", "ZMCxSHREY", "K4气KALAAKAR", "『AIMGOD』1", "T乛Rex乛RAVAN", "Ē・ＶＥＮＯＭ", "๛『Vëgêtå", "4A乛M丨SNOW", "٭ɞALPHAʚ٭", "im๛PANDA", "SGLxShivam", "乛GameīxīOM", "・Ｄ卄マＵＶ・", "『EPC』KRXSNA", "ＦｒＯｚｅＮ", "๛Ðʀʌɢo", "ＹＡＳＨīě", "ＳＨＵ及Ｈ", "XT个『Farhan』", "D£ATH๛SLAYER", "『LAKSHYÀ』", "中ツWARRIORYT", "Vns๛Rahul", "EQZxJOKERyt", "ReFLeXツVENOM", "冬ＧＡBAʀ" ];
     function getSocialUcPacks() { const tPacks = window.siteConfig.trialPacks || []; const bPacks = window.siteConfig.bulkPacks || []; return [...tPacks, ...bPacks].map(p => p.uc + " UC"); }
@@ -5331,7 +5284,6 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
         popup.style.display = 'none';
     };
 
-        
         async function proceedToPackSelection() {
         currentUid = uidInput.value.trim();
         currentIgn = verifiedPlayerName;
@@ -5345,7 +5297,24 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
         if (d3Uid) d3Uid.textContent = currentUid;
         if (d3Ign) d3Ign.textContent = currentIgn;
 
-        // FIXED V3: Wait for packs to fully load BEFORE showing step 2 - no instant navigation
+        // FIXED Task 2: Ensure packs are fully rendered BEFORE showing step 2
+        try {
+            if(typeof window.renderSitePacks === 'function') {
+                window.renderSitePacks();
+            }
+        } catch(e){}
+
+        // Apply cache instantly if available for fast filter
+        try {
+            if (cachedPurchasedPacks && Array.isArray(cachedPurchasedPacks)) {
+                applyPurchasedFilter(cachedPurchasedPacks);
+            } else {
+                const lsCached = getCachedPacks(currentUid);
+                if (lsCached) applyPurchasedFilter(lsCached);
+            }
+        } catch(e){}
+
+        // Fetch purchased packs and WAIT until fully loaded - Continue button spinner stays until this completes
         try {
             let purchasedPacks = cachedPurchasedPacks;
             if (purchasedPacks === null) {
@@ -5356,22 +5325,40 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
                     purchasedPacks = await fetchPurchasedPacks(currentUid);
                 }
             } else {
-                // Already have cached, still try to get fresh if preload promise exists
                 if (packsPreloadPromise) {
                     try { 
-                        const fresh = await packsPreloadPromise;
-                        if (fresh) purchasedPacks = fresh;
+                        const fresh = await Promise.race([
+                            packsPreloadPromise,
+                            new Promise(res => setTimeout(()=>res(null), 2500))
+                        ]);
+                        if (fresh && Array.isArray(fresh)) purchasedPacks = fresh;
                     } catch(e){}
                 }
             }
-            if (Array.isArray(purchasedPacks)) applyPurchasedFilter(purchasedPacks);
+            if (Array.isArray(purchasedPacks)) {
+                applyPurchasedFilter(purchasedPacks);
+            }
         } catch(e) { console.error('proceed error', e); }
+
+        // FIXED Task 2 & 3: Preload all pack UC images before showing packs, so no default image flicker
+        try {
+            const allPacks = [...(window.siteConfig.trialPacks||[]), ...(window.siteConfig.bulkPacks||[])];
+            const packImageUrls = allPacks.map(p=>p.packImage).filter(u=>u && u.length>100);
+            if(packImageUrls.length>0) {
+                await Promise.all(packImageUrls.map(src => new Promise(res=>{
+                    const im=new Image();
+                    im.onload=im.onerror=()=>res();
+                    try { im.src=src; } catch(e){ res(); }
+                    setTimeout(res, 1500);
+                })));
+            }
+        } catch(e){}
         
-        // NOW show packs after fully loaded
+        // Now show packs - spinner will hide after this in finally block of caller
         showStep(2);
     }
 
-function onVerifySuccess(pid, playerName) {
+    function onVerifySuccess(pid, playerName) {
         if (!isValidPlayerName(playerName)) {
             showVerifyResult('error', "This BGMI user ID doesn't exist");
             if (verifyBtn) {
@@ -5553,22 +5540,20 @@ function onVerifySuccess(pid, playerName) {
       hideVerifyResult();
     });
 
-    
-    // Verify button click - MODIFIED V3: Verify -> Continue with spinner, waits for packs fully loaded
+    // Verify button click - MODIFIED: Verify -> Continue flow, no popup
     if (verifyBtn) {
         verifyBtn.addEventListener('click', async () => {
             if (isUidVerified && verifiedPlayerName) {
-                // --- CONTINUE BUTTON SPINNER (same as Verify) - FIXED V3: stays until packs fully loaded ---
+                // --- CONTINUE BUTTON SPINNER (same as Verify) ---
                 verifyBtn.disabled = true;
                 verifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
                 verifyBtn.style.opacity = '0.7';
                 verifyBtn.style.cursor = 'not-allowed';
                 try {
                     await proceedToPackSelection();
-                } catch(e) {
-                    console.error('Continue error', e);
                 } finally {
-                    // Restore button after packs are shown
+                    // FIX: Always restore button from Loading... to Continue if still verified,
+                    // so back navigation doesn't leave it stuck in Loading/Verifying state
                     if (isUidVerified) {
                         verifyBtn.innerHTML = 'Continue <i class="fa-solid fa-arrow-right" style="margin-left:6px;"></i>';
                         verifyBtn.disabled = false;
@@ -5629,7 +5614,7 @@ function onVerifySuccess(pid, playerName) {
         });
     }
 
-// Close popup on backdrop click
+    // Close popup on backdrop click
     // Change BGMI user ID button - kept hidden, now UID tap does the job
     const changeUidBtn = document.getElementById('changeUidBtn');
     if (changeUidBtn) {
@@ -5757,44 +5742,33 @@ function onVerifySuccess(pid, playerName) {
     }
 
 
-    
     document.getElementById('next1').onclick = async () => {
+        // This button is disabled state in new flow, but keep for safety - just call same instant function
+        // Old blocking code removed -> now instant
         const btn = document.getElementById('next1');
-        // If verified, use the optimized path but WAIT for packs fully
+        // If verified, use the optimized path
         if (typeof verifiedPlayerName !== 'undefined' && verifiedPlayerName) {
-            btn.disabled = true;
-            const origHtml = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
-            btn.style.opacity = '0.7';
+            currentUid = uidInput.value.trim();
+            currentIgn = verifiedPlayerName;
+            document.getElementById('displayUid').textContent = currentUid; 
+            document.getElementById('displayIgn').textContent = currentIgn;
+            document.getElementById('displayUidStep3').textContent = currentUid; 
+            document.getElementById('displayIgnStep3').textContent = currentIgn;
+            showStep(2);
             try {
-                currentUid = uidInput.value.trim();
-                currentIgn = verifiedPlayerName;
-                document.getElementById('displayUid').textContent = currentUid; 
-                document.getElementById('displayIgn').textContent = currentIgn;
-                document.getElementById('displayUidStep3').textContent = currentUid; 
-                document.getElementById('displayIgnStep3').textContent = currentIgn;
-                // Wait for packs fully loaded before showing
                 let packs = cachedPurchasedPacks || getCachedPacks(currentUid);
-                if (packsPreloadPromise) {
-                    try {
-                        const fresh = await packsPreloadPromise;
-                        if (fresh) packs = fresh;
-                    } catch(e){}
-                }
-                if (!packs) {
-                    packs = await fetchPurchasedPacks(currentUid);
-                }
                 if (packs) applyPurchasedFilter(packs);
-                showStep(2);
-            } catch(e){ console.error(e); }
-            finally {
-                btn.innerHTML = origHtml;
-                btn.disabled = false;
-                btn.style.opacity = '1';
-            }
+                if (packsPreloadPromise) {
+                    const fresh = await packsPreloadPromise;
+                    if (fresh) applyPurchasedFilter(fresh);
+                } else if (!packs) {
+                    const fresh = await fetchPurchasedPacks(currentUid);
+                    applyPurchasedFilter(fresh);
+                }
+            } catch(e){}
             return;
         }
-        // fallback old behavior but optimized and waiting
+        // fallback old behavior but optimized
         const originalText = btn.innerHTML;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...'; btn.disabled = true;
         currentUid = uidInput.value.trim();
@@ -5804,15 +5778,15 @@ function onVerifySuccess(pid, playerName) {
         document.getElementById('displayIgn').textContent = currentIgn;
         document.getElementById('displayUidStep3').textContent = currentUid; 
         document.getElementById('displayIgnStep3').textContent = currentIgn;
+        showStep(2);
         try {
             const purchasedPacks = await fetchPurchasedPacks(currentUid);
             applyPurchasedFilter(purchasedPacks);
-            showStep(2);
         } catch(e){}
         btn.innerHTML = originalText; btn.disabled = false;
     };
 
-document.getElementById('backToDetails').onclick = () => {
+    document.getElementById('backToDetails').onclick = () => {
         if (typeof autoProceedTimeout !== "undefined" && autoProceedTimeout) { clearTimeout(autoProceedTimeout); autoProceedTimeout = null; }
         // Reset UID flow so Verify button shows instead of Continue when returning to step1
         if (typeof resetVerification === 'function') resetVerification();
@@ -6335,15 +6309,354 @@ document.getElementById('backToDetails').onclick = () => {
         track.style.transform = 'translateX(-' + (window.currentBannerIndex * 100) + '%)';
     };
 
-    // FIXED V3: Clean banner render after page load - ensures Firebase banners visible
+    window.renderGameBanners = function() {
+        try {
+            var wrap = document.getElementById('gameBannerSliderWrap');
+            var oldTrack = document.getElementById('gameBannerTrack');
+            if(!wrap || !oldTrack) {
+                console.log('Banner wrap/track not found');
+                return;
+            }
+            var gi = window.siteConfig && window.siteConfig.gameInfo ? window.siteConfig.gameInfo : {};
+            var banners = gi.banners || [];
+            // Filter valid banners
+            banners = banners.filter(b => b && typeof b === 'string' && b.length > 20);
+
+            console.log('renderGameBanners: found', banners.length, 'banners');
+
+            if(banners.length === 0) {
+                wrap.style.display = 'none';
+                oldTrack.innerHTML = '';
+                if(window.gameBannerInterval) { clearInterval(window.gameBannerInterval); window.gameBannerInterval = null; }
+                window._bannerRealCount = 0;
+                return;
+            }
+
+            wrap.style.display = 'block'; wrap.classList.add('has-banners');
+            if(window.gameBannerInterval) { clearInterval(window.gameBannerInterval); window.gameBannerInterval = null; }
+
+            // Create fresh track to remove old listeners
+            var track = oldTrack.cloneNode(false);
+            track.id = 'gameBannerTrack';
+            track.className = oldTrack.className;
+            if(oldTrack.parentNode) oldTrack.parentNode.replaceChild(track, oldTrack);
+
+            if(banners.length === 1) {
+                track.innerHTML = `<div class="game-banner-slide"><img src="${banners[0]}" alt="Game Banner" draggable="false" loading="lazy" style="pointer-events:auto !important;"></div>`;
+                track.style.transition = 'none';
+                track.style.transform = 'translateX(0%)';
+                window.currentBannerIndex = 0;
+                window._bannerRealCount = 1;
+                window._isTransitioning = false;
+                return;
+            }
+
+            // Infinite loop: [last, ...banners, first]
+            var extended = [];
+            extended.push(banners[banners.length - 1]);
+            extended = extended.concat(banners);
+            extended.push(banners[0]);
+
+            track.innerHTML = extended.map(src => `<div class="game-banner-slide"><img src="${src}" alt="Game Banner" draggable="false" loading="lazy" style="pointer-events:auto !important;"></div>`).join('');
+            window._bannerRealCount = banners.length;
+            window.currentBannerIndex = 1;
+            window._isTransitioning = false;
+
+            track.style.transition = 'none';
+            track.style.transform = 'translateX(-' + (window.currentBannerIndex * 100) + '%)';
+            track.offsetHeight;
+            track.style.transition = 'transform 0.5s ease-in-out';
+
+            track.addEventListener('transitionend', function() {
+                if(window._bannerRealCount <= 1) return;
+                if(window.currentBannerIndex === 0) {
+                    track.style.transition = 'none';
+                    window.currentBannerIndex = window._bannerRealCount;
+                    track.style.transform = 'translateX(-' + (window.currentBannerIndex * 100) + '%)';
+                    track.offsetHeight;
+                    track.style.transition = 'transform 0.5s ease-in-out';
+                } else if(window.currentBannerIndex === window._bannerRealCount + 1) {
+                    track.style.transition = 'none';
+                    window.currentBannerIndex = 1;
+                    track.style.transform = 'translateX(-' + (window.currentBannerIndex * 100) + '%)';
+                    track.offsetHeight;
+                    track.style.transition = 'transform 0.5s ease-in-out';
+                }
+                window._isTransitioning = false;
+            });
+
+            window.gameBannerInterval = setInterval(() => {
+                if(window._isTransitioning) return;
+                window._isTransitioning = true;
+                window.currentBannerIndex++;
+                window.updateBannerPosition();
+            }, 2500);
+
+            track.addEventListener('touchstart', function(e) {
+                window._bannerTouchStartX = e.touches[0].clientX;
+                window._bannerIsDragging = true;
+                if(window.gameBannerInterval) { clearInterval(window.gameBannerInterval); window.gameBannerInterval = null; }
+            }, {passive:true});
+
+            track.addEventListener('touchend', function(e) {
+                if(!window._bannerIsDragging) return;
+                window._bannerIsDragging = false;
+                var endX = e.changedTouches[0].clientX;
+                var diff = window._bannerTouchStartX - endX;
+                if(Math.abs(diff) > 50 && !window._isTransitioning) {
+                    window._isTransitioning = true;
+                    window._bannerWasDrag = true;
+                    if(diff > 0) window.currentBannerIndex++; else window.currentBannerIndex--;
+                    window.updateBannerPosition();
+                }
+                if(window._bannerRealCount > 1) {
+                    if(window.gameBannerInterval) clearInterval(window.gameBannerInterval);
+                    window.gameBannerInterval = setInterval(() => {
+                        if(window._isTransitioning) return;
+                        window._isTransitioning = true;
+                        window.currentBannerIndex++;
+                        window.updateBannerPosition();
+                    }, 2500);
+                }
+            }, {passive:true});
+
+            var mouseDown = false;
+            track.addEventListener('mousedown', function(e) {
+                mouseDown = true;
+                window._bannerTouchStartX = e.clientX;
+                if(window.gameBannerInterval) { clearInterval(window.gameBannerInterval); window.gameBannerInterval = null; }
+                e.preventDefault();
+            });
+            track.addEventListener('mouseup', function(e) {
+                if(!mouseDown) return;
+                mouseDown = false;
+                var diff = window._bannerTouchStartX - e.clientX;
+                if(Math.abs(diff) > 50 && !window._isTransitioning) {
+                    window._isTransitioning = true;
+                    window._bannerWasDrag = true;
+                    if(diff > 0) window.currentBannerIndex++; else window.currentBannerIndex--;
+                    window.updateBannerPosition();
+                } else { window._bannerWasDrag = false; }
+                if(window._bannerRealCount > 1) {
+                    if(window.gameBannerInterval) clearInterval(window.gameBannerInterval);
+                    window.gameBannerInterval = setInterval(() => {
+                        if(window._isTransitioning) return;
+                        window._isTransitioning = true;
+                        window.currentBannerIndex++;
+                        window.updateBannerPosition();
+                    }, 2500);
+                }
+            });
+            track.addEventListener('mouseleave', function() { mouseDown = false; });
+
+            track.addEventListener('click', function(e) {
+                if(window._bannerWasDrag) { window._bannerWasDrag = false; return; }
+                if(window._isTransitioning) return;
+                var rect = track.getBoundingClientRect();
+                var clickX = e.clientX - rect.left;
+                var isLeftSide = clickX < rect.width / 2;
+                window._isTransitioning = true;
+                if(isLeftSide) window.currentBannerIndex--; else window.currentBannerIndex++;
+                window.updateBannerPosition();
+                if(window._bannerRealCount > 1) {
+                    if(window.gameBannerInterval) clearInterval(window.gameBannerInterval);
+                    window.gameBannerInterval = setInterval(() => {
+                        if(window._isTransitioning) return;
+                        window._isTransitioning = true;
+                        window.currentBannerIndex++;
+                        window.updateBannerPosition();
+                    }, 2500);
+                }
+            });
+            track.style.cursor = 'pointer';
+
+        } catch(e) { console.log('renderGameBanners error', e); }
+    };
+
+    window.addEventListener('resize', function() {
+        if(window.updateBannerPosition) window.updateBannerPosition();
+    });
+
+    window.renderAdminGameBannersList = function() {
+        var listEl = document.getElementById('adminGameBannersList');
+        if(!listEl) return;
+        var banners = (window.siteConfig && window.siteConfig.gameInfo && window.siteConfig.gameInfo.banners) || [];
+        if(banners.length === 0) {
+            listEl.innerHTML = '<div style="font-size:11px; color:#777; padding:8px; background:rgba(255,255,255,0.03); border-radius:6px; text-align:center;">No banners added yet. 2:1 images upload karo.</div>';
+            return;
+        }
+        listEl.innerHTML = banners.map((src, idx) => `
+            <div style="display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.05); padding:6px; border-radius:8px; border:1px solid rgba(255,255,255,0.08);">
+                <img src="${src}" style="width:60px; height:30px; object-fit:cover; border-radius:4px; flex-shrink:0; border:1px solid rgba(255,255,255,0.1);">
+                <span style="flex:1; font-size:10px; color:#aaa;">Banner ${idx+1}</span>
+                <button type="button" onclick="deleteGameBanner(${idx})" style="background:rgba(255,71,87,0.2); border:1px solid rgba(255,71,87,0.3); color:#ff4757; padding:4px 8px; border-radius:6px; cursor:pointer; font-size:11px;"><i class="fas fa-times"></i></button>
+            </div>
+        `).join('');
+    };
+
+    window.deleteGameBanner = function(idx) {
+        if(!window.siteConfig.gameInfo) window.siteConfig.gameInfo = {};
+        if(!Array.isArray(window.siteConfig.gameInfo.banners)) window.siteConfig.gameInfo.banners = [];
+        window.siteConfig.gameInfo.banners.splice(idx, 1);
+        window.renderAdminGameBannersList();
+        window.renderGameBanners();
+        // Auto save to localStorage
+        try { localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(window.siteConfig)); } catch(e) {}
+        if(window.saveConfigToDB) { window.saveConfigToDB(window.siteConfig); }
+    };
+
+    window.clearAllGameBanners = function() {
+        if(!confirm('Saare banners delete karne hain?')) return;
+        if(!window.siteConfig.gameInfo) window.siteConfig.gameInfo = {};
+        window.siteConfig.gameInfo.banners = [];
+        window.renderAdminGameBannersList();
+        window.renderGameBanners();
+        try { localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(window.siteConfig)); } catch(e) {}
+        if(window.saveConfigToDB) { window.saveConfigToDB(window.siteConfig); }
+    };
+
+    window.handleGameBannersUpload = function(event) {
+        var files = event.target.files;
+        if(!files || files.length === 0) return;
+        if(!window.siteConfig.gameInfo) window.siteConfig.gameInfo = {};
+        if(!Array.isArray(window.siteConfig.gameInfo.banners)) window.siteConfig.gameInfo.banners = [];
+
+        var remaining = files.length;
+        var processed = [];
+
+        console.log('Uploading', files.length, 'banners');
+
+        Array.from(files).forEach(file => {
+            if(!file.type.startsWith('image/')) { 
+                remaining--; 
+                if(remaining===0 && processed.length>0) {
+                    window.siteConfig.gameInfo.banners = window.siteConfig.gameInfo.banners.concat(processed);
+                    window.renderAdminGameBannersList();
+                    window.renderGameBanners();
+                    try { localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(window.siteConfig)); } catch(e) { console.log('localStorage save failed', e); }
+                    if(window.saveConfigToDB) { window.saveConfigToDB(window.siteConfig).then(r=>console.log('DB save',r)); }
+                    event.target.value = '';
+                }
+                return; 
+            }
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                var img = new Image();
+                img.onload = function() {
+                    var canvas = document.createElement('canvas');
+                    let width = img.width; let height = img.height;
+                    const maxSize = 1000;
+                    if (width > maxSize || height > maxSize) {
+                        if (width > height) { height *= maxSize / width; width = maxSize; }
+                        else { width *= maxSize / height; height = maxSize; }
+                    }
+                    canvas.width = width; canvas.height = height;
+                    var ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    var base64 = canvas.toDataURL('image/webp', 0.6) // FIXED;
+                    processed.push(base64);
+                    remaining--;
+                    console.log('Processed', processed.length, 'remaining', remaining);
+                    if(remaining === 0) {
+                        window.siteConfig.gameInfo.banners = window.siteConfig.gameInfo.banners.concat(processed);
+                        window.renderAdminGameBannersList();
+                        window.renderGameBanners();
+                        try { localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(window.siteConfig)); } catch(e) { console.log('localStorage save failed - maybe quota exceeded, trying without banners? ', e); }
+                        if(window.saveConfigToDB) { 
+                            window.saveConfigToDB(window.siteConfig).then(s=>console.log('DB save after banner upload:', s)).catch(err=>console.log('DB save error', err));
+                        }
+                        event.target.value = '';
+                        alert(processed.length + ' banner(s) added! Save karna mat bhoolo - Save Live button dabao.');
+                    }
+                };
+                img.onerror = function() {
+                    console.log('Image load error');
+                    remaining--;
+                    if(remaining===0 && processed.length>0) {
+                        window.siteConfig.gameInfo.banners = window.siteConfig.gameInfo.banners.concat(processed);
+                        window.renderAdminGameBannersList();
+                        window.renderGameBanners();
+                        try { localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(window.siteConfig)); } catch(e) {}
+                        if(window.saveConfigToDB) { window.saveConfigToDB(window.siteConfig); }
+                        event.target.value = '';
+                    }
+                };
+                img.src = e.target.result;
+            };
+            reader.onerror = function() {
+                remaining--;
+                console.log('FileReader error');
+            };
+            reader.readAsDataURL(file);
+        });
+    };
+
+    // FIX: Ensure banners are rendered after page load and after Firebase config
     document.addEventListener('DOMContentLoaded', function() {
         setTimeout(function() {
             if(window.renderGameBanners) window.renderGameBanners();
             if(window.renderAdminGameBannersList) window.renderAdminGameBannersList();
         }, 500);
     });
-    console.log('Banner V3 loaded');
 
-  </script>
+    // Also patch saveAdminSettings to ensure banners are preserved
+    const originalSaveAdminSettings = window.saveAdminSettings;
+    window.saveAdminSettings = async function() {
+        console.log('Patched saveAdminSettings called, preserving banners:', window.siteConfig.gameInfo?.banners?.length);
+        // Ensure banners array exists
+        if(!window.siteConfig.gameInfo) window.siteConfig.gameInfo = {};
+        if(!Array.isArray(window.siteConfig.gameInfo.banners)) window.siteConfig.gameInfo.banners = [];
+        
+        // Call original if exists, but we will re-implement to be safe
+        // Save Game Info fields
+        try {
+            var gNameEl = document.getElementById('adminGameName');
+            var gPubEl = document.getElementById('adminGamePublisher');
+            var gPlayEl = document.getElementById('adminPlayStoreLink');
+            var gAppEl = document.getElementById('adminAppStoreLink');
+            if(gNameEl) window.siteConfig.gameInfo.name = gNameEl.value.trim() || 'Battlegrounds Mobile India';
+            if(gPubEl) window.siteConfig.gameInfo.publisher = gPubEl.value.trim() || 'KRAFTON, Inc.';
+            if(gPlayEl) window.siteConfig.gameInfo.playStoreLink = gPlayEl.value.trim() || 'https://play.google.com/store/apps/details?id=com.pubg.imobile';
+            if(gAppEl) window.siteConfig.gameInfo.appStoreLink = gAppEl.value.trim() || 'https://apps.apple.com/in/app/bgmi-battlegrounds-mobile-india/id1526436837';
+            if(window.siteConfig.images && window.siteConfig.images.gameLogo) {
+                window.siteConfig.gameInfo.logo = window.siteConfig.images.gameLogo;
+            }
+        } catch(e) { console.log('GameInfo save error', e); }
+
+        // Now call original save logic for rest - we will trigger the original function's remaining part
+        // To avoid duplication, just call the original but ensure banners are not lost
+        // The original will overwrite gameInfo fields but keep banners because it doesn't clear banners
+        // So we save banners temp
+        var tempBanners = window.siteConfig.gameInfo.banners ? [...window.siteConfig.gameInfo.banners] : [];
+        
+        // If originalSave exists and we want to avoid recursion, call it via a separate function
+        // Instead, we will manually do the full save (copying original logic) but preserving banners
+        // For simplicity, if originalSaveAdminSettings was defined before our patch, we will call it
+        // But we already saved tempBanners, so restore after original's initial gameInfo handling
+        
+        // To prevent double execution, we check if this is our patched version calling original
+        // We'll just execute the full original logic from file but ensuring banners preserved
+        
+        // --- BEGIN original saveAdminSettings logic (simplified to call original) ---
+        if (typeof originalSaveAdminSettings === 'function' && originalSaveAdminSettings !== window.saveAdminSettings) {
+            // Temporarily store banners, call original, then restore banners if original cleared them
+            var result = await originalSaveAdminSettings();
+            // Ensure banners restored if original accidentally cleared
+            if(!window.siteConfig.gameInfo.banners || window.siteConfig.gameInfo.banners.length === 0) {
+                window.siteConfig.gameInfo.banners = tempBanners;
+                try { localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(window.siteConfig)); } catch(e) {}
+                if(window.saveConfigToDB) await window.saveConfigToDB(window.siteConfig);
+            }
+            // Force re-render banners after save
+            setTimeout(function() {
+                if(window.renderGameBanners) window.renderGameBanners();
+                if(window.renderAdminGameBannersList) window.renderAdminGameBannersList();
+            }, 200);
+            return result;
+        }
+    };
+
+    console.log('Banner patch loaded - banners:', window.siteConfig?.gameInfo?.banners?.length);
+</script>
 </body>
 </html>
