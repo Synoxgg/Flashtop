@@ -1401,19 +1401,12 @@
     #topAmountDisplay { display:none !important; }
 
     
-    #verify-result { display:none; font-size:12px; border-radius:12px; margin-top:2px; width:100%; box-sizing:border-box; overflow:visible; word-break:break-word; overflow-wrap:anywhere; white-space:normal; }
+    #verify-result { display:none; font-size:12px; border-radius:12px; margin-top:2px; }
     #verifyUidBtn { width:100%; padding:0 18px; height:46px; background:var(--primary); color:#000; border:none; border-radius:12px; font-family:var(--font-display); font-weight:800; font-size:13px; letter-spacing:0.5px; cursor:not-allowed; opacity:0.4; white-space:nowrap; transition:all 0.2s; }
     #verifyUidBtn:enabled { cursor:pointer; opacity:1; }
     #changeUidBtn { display:none; width:100%; padding:0 18px; height:42px; background:transparent; color:#fff; border:1px solid rgba(255,255,255,0.15); border-radius:12px; font-family:var(--font-display); font-weight:600; font-size:12px; cursor:pointer; }
     .success-tile { display:flex; align-items:center; gap:10px; }
     
-
-    /* FIX: Full BGMI ID Name display - no cut */
-    #verify-result { width:100% !important; box-sizing:border-box !important; overflow:visible !important; word-break:break-word !important; overflow-wrap:anywhere !important; white-space:normal !important; }
-    #verify-result span { white-space:normal !important; word-break:break-word !important; overflow-wrap:anywhere !important; display:block !important; }
-    #displayIgn, #displayIgnStep3, #finalIgnVal, #receipt-ign { white-space:normal !important; word-break:break-word !important; overflow-wrap:anywhere !important; overflow:visible !important; text-overflow:clip !important; }
-    #ign { text-overflow:clip !important; white-space:normal !important; }
-
 </style>
 
 <style>
@@ -1540,7 +1533,7 @@
             <span style="color:var(--success); font-size:11px; margin-left:6px;"><i class="fa-solid fa-wand-magic-sparkles"></i> Auto</span>
           </label>
           <div class="form-input-wrapper">
-            <input type="text" class="form-input" id="ign" placeholder="Will auto-fill after UID verify" maxlength="50" readonly style="background:rgba(0,255,157,0.05); border-color:rgba(0,255,157,0.3); color:#fff;">
+            <input type="text" class="form-input" id="ign" placeholder="Will auto-fill after UID verify" maxlength="20" readonly style="background:rgba(0,255,157,0.05); border-color:rgba(0,255,157,0.3); color:#fff;">
             <i class="input-icon" id="ignIcon"></i>
           </div>
           <div class="error-message" id="ignError"><span id="dispErrIgn">Name Required</span></div>
@@ -1574,7 +1567,7 @@
             <div style="display: flex; align-items: center; gap: 6px; font-family: var(--font-display); overflow: hidden; white-space: nowrap; flex: 1; margin-right: 10px;">
                 <span id="displayUid" style="color:#fff; font-weight: 700; font-size: 15px; text-overflow: ellipsis; overflow: hidden; flex-shrink: 0;">--</span>
                 <span style="color: var(--text-muted); font-size: 14px; flex-shrink: 0;">•</span>
-                <span id="displayIgn" style="white-space:normal !important; word-break:break-word !important; overflow-wrap:anywhere !important; overflow:visible !important; text-overflow:clip !important;" style="color:var(--primary); font-weight: 600; font-size: 14px; text-overflow: ellipsis; overflow: hidden;">--</span>
+                <span id="displayIgn" style="color:var(--primary); font-weight: 600; font-size: 14px; text-overflow: ellipsis; overflow: hidden;">--</span>
             </div>
             <button type="button" class="btn btn-secondary" id="backToDetails" style="padding: 6px 12px; font-size: 13px; width: auto; margin: 0; min-height: unset; flex-shrink: 0;"><span id="dispBtnChange1">Change</span></button>
         </div>
@@ -5097,21 +5090,21 @@ window.openModal = function(modalId, isBack = false) {
     function extractNameFromText(text) {
         if (!text) return "";
         text = String(text);
+        // FIXED: Unicode + Symbols full support - pura naam ke liye
         var patterns = [
+            /Player\s+"([^"]{2,50})"/i,
+            /"([^"\n\r]{2,50})"\s*verified/i,
+            /Player\s+([^"\n\r]{2,50}?)\s+verified/i,
+            /verified!\s*([^"\n\r"']{2,50})/i,
             /Player Name\s*[:\-]\s*([^\n\r,]+)/i,
             /IGN\s*[:\-]\s*([^\n\r,]+)/i,
             /Username\s*[:\-]\s*([^\n\r,]+)/i,
-            /Name\s*[:\-]\s*([^\n\r,]+)/i,
-            /"([^"]{2,50})"\s*verified/i,
-            /Player\s+"([^"]+)"/i,
-            /Player\s+([^\n\r]{2,50})\s+verified/i,
-            /verified[^\n\r]*?([A-Za-z0-9_\-\u00C0-\u024F\u0900-\u097F\u0E00-\u0E7F\u0980-\u09FF\u0A00-\u0A7F\u0B00-\u0B7F\u0B80-\u0BFF\u0C00-\u0C7F\u0D00-\u0D7F\u0E80-\u0EFF\u1000-\u109F\u2000-\u206F\u3000-\u303F\u3040-\u309F\u30A0-\u30FF\u3130-\u318F\u4E00-\u9FFF\uAC00-\uD7AF\u00A0-\u00FF\u0100-\u017F\u0180-\u024F]{2,50})/i,
-            /verified!\s*([^\n\r,]{2,50})/i
+            /Name\s*[:\-]\s*([^\n\r,]+)/i
         ];
         for (var i = 0; i < patterns.length; i++) {
             var m = text.match(patterns[i]);
             if (m && m[1]) {
-                var name = m[1].trim().replace(/["']/g, "").trim().replace(/\s*verified!?.*$/i, "").trim();
+                var name = m[1].trim().replace(/^["'\s]+|["'\s]+$/g, "").trim();
                 if (name.length >= 2 && name.length <= 50 && name.toLowerCase() !== "player") return name;
             }
         }
@@ -5186,7 +5179,7 @@ window.openModal = function(modalId, isBack = false) {
                     if (m3 && m3[1]) playerName = m3[1].trim().substring(0,50);
                 }
                 if (playerName) isSuccess = true;
-                message = rawText.slice(0,500);
+                message = rawText.slice(0,200);
             }
         } catch(e) {}
         return { success: isSuccess && isValidPlayerName(playerName), name: playerName ? playerName.trim() : "", message: message || (playerName ? "Player " + playerName + " verified!" : "") };
@@ -5253,29 +5246,15 @@ window.openModal = function(modalId, isBack = false) {
                 function showVerifyResult(type, msg) {
         if (!verifyResult) return;
         verifyResult.style.display = 'block';
-        verifyResult.style.width = '100%';
-        verifyResult.style.boxSizing = 'border-box';
-        verifyResult.style.overflow = 'visible';
-        verifyResult.style.wordBreak = 'break-word';
-        verifyResult.style.overflowWrap = 'anywhere';
-        verifyResult.style.whiteSpace = 'normal';
         if (type === 'success') {
             verifyResult.style.background = 'rgba(0,255,157,0.08)';
             verifyResult.style.border = '1px solid rgba(0,255,157,0.25)';
             verifyResult.style.color = '#00ff9d';
             verifyResult.style.padding = '12px 14px';
             verifyResult.style.borderRadius = '12px';
-            // FIX: Don't cut name - show full name as received, no risky regex stripping
-            let raw = String(msg || '').trim();
-            // Only remove leading "Player:" or "Player Name:" type prefixes, not cut in middle
-            let cleanName = raw.replace(/^(Player\s*Name\s*[:\-]\s*|Player\s*[:\-]\s*|IGN\s*[:\-]\s*|Name\s*[:\-]\s*)/i, '').trim();
-            cleanName = cleanName.replace(/^[:\s]+/, '').trim();
-            // Remove trailing " verified!" if present
-            cleanName = cleanName.replace(/\s*verified!?.*$/i, '').trim();
-            const finalDisplayName = (cleanName || raw || msg || '').trim();
-            // Escape HTML to prevent break
-            const escName = finalDisplayName.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-            verifyResult.innerHTML = `<div style="display:flex; align-items:flex-start; gap:10px; min-width:0; width:100%;"><div style="width:28px; height:28px; background:rgba(0,255,157,0.15); border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:2px;"><i class="fa-solid fa-circle-check" style="font-size:14px;"></i></div><div style="display:flex; flex-direction:column; line-height:1.2; flex:1; min-width:0; overflow:visible; word-break:break-word;"><span style="font-size:10px; color:#9ca3af; letter-spacing:0.5px; text-transform:uppercase;">BGMI ID Name</span><span style="font-weight:700; font-size:14px; color:#fff; font-family:var(--font-display); white-space:normal; word-break:break-word; overflow-wrap:anywhere; display:block; line-height:1.4; max-width:100%;" title="${escName}">${escName}</span></div></div>`;
+            const cleanName = String(msg).replace(/^.*Player\s*/i, '').trim() || msg;
+            const finalDisplayName = cleanName.replace(/^:\s*/, '').trim() || msg;
+            verifyResult.innerHTML = `<div style="display:flex; align-items:center; gap:10px;"><div style="width:28px; height:28px; background:rgba(0,255,157,0.15); border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;"><i class="fa-solid fa-circle-check" style="font-size:14px;"></i></div><div style="display:flex; flex-direction:column; line-height:1.2;"><span style="font-size:10px; color:#9ca3af; letter-spacing:0.5px; text-transform:uppercase;">BGMI ID Name</span><span style="font-weight:700; font-size:14px; color:#fff; font-family:var(--font-display);">${finalDisplayName}</span></div></div>`;
         } else {
             verifyResult.style.background = 'rgba(255,71,87,0.1)';
             verifyResult.style.border = '1px solid rgba(255,71,87,0.3)';
