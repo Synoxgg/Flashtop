@@ -5090,7 +5090,7 @@ window.openModal = function(modalId, isBack = false) {
     function extractNameFromText(text) {
         if (!text) return "";
         text = String(text);
-        // FIXED: Unicode + Symbols full support - pura naam ke liye
+        // FIXED: Unicode full support + ID/verified blacklist
         var patterns = [
             /Player\s+"([^"]{2,50})"/i,
             /"([^"\n\r]{2,50})"\s*verified/i,
@@ -5101,11 +5101,15 @@ window.openModal = function(modalId, isBack = false) {
             /Username\s*[:\-]\s*([^\n\r,]+)/i,
             /Name\s*[:\-]\s*([^\n\r,]+)/i
         ];
+        var blacklist = ["player", "verified", "id", "uid", "player id", "id verified", "player verified", "player id verified"];
         for (var i = 0; i < patterns.length; i++) {
             var m = text.match(patterns[i]);
             if (m && m[1]) {
                 var name = m[1].trim().replace(/^["'\s]+|["'\s]+$/g, "").trim();
-                if (name.length >= 2 && name.length <= 50 && name.toLowerCase() !== "player") return name;
+                var low = name.toLowerCase();
+                if (name.length >= 2 && name.length <= 50 && blacklist.indexOf(low) === -1 && !/^\d+$/.test(name) && !(low.includes("verified") && low.length < 15)) {
+                    return name;
+                }
             }
         }
         return "";
@@ -5114,12 +5118,13 @@ window.openModal = function(modalId, isBack = false) {
     function isValidPlayerName(name) {
         if (!name) return false;
         name = String(name).trim();
-        // Allow unicode letters (for names like SūYūNūOūX)
         if (name.length < 2 || name.length > 50) return false;
-        if (name.toLowerCase() === "player") return false;
-        if (name.toLowerCase() === "verified") return false;
-        if (/^\d+$/.test(name)) return false;
-        // Must contain at least 2 letters/numbers, not just symbols
+        var low = name.toLowerCase().trim();
+        // Blacklist jo galat UID pe aate hain
+        if (["player", "verified", "id", "uid", "player id", "id verified", "player verified", "player id verified"].indexOf(low) !== -1) return false;
+        if (low === "verified" || low === "id") return false;
+        if (/^\d+$/.test(name)) return false; // sirf numbers = UID, naam nahi
+        if (low.includes("verified") && low.length < 15) return false; // "verified", "id verified" jaise chote strings
         if (!/[^\s]{2,}/.test(name)) return false;
         return true;
     }
@@ -5163,7 +5168,7 @@ window.openModal = function(modalId, isBack = false) {
                     }
                 }
                 // If we have valid name, force success true
-                if (isValidPlayerName(playerName)) {
+                if (isValidPlayerName(playerName) && playerName !== String(currentUid || "").trim() && !/^\d+$/.test(playerName)) {
                     isSuccess = true;
                 } else {
                     isSuccess = rawSuccess;
@@ -5196,20 +5201,21 @@ window.openModal = function(modalId, isBack = false) {
             var url = `${GOOGLE_SCRIPT_VERIFY_URL}?uid=${encodeURIComponent(pid)}&t=${Date.now()}`;
             var res = await fetch(url, { method: 'GET' });
             var data = await res.json();
-            // Fix generic "Player" bug - if name is Player, try extract from message
+            // Fix generic "Player" / "ID" / "verified" bug - agar galat naam aaye to invalid samjho
             if (data && data.name) {
                 var n = String(data.name).trim();
-                if (n.toLowerCase() === "player" || !isValidPlayerName(n)) {
+                var lowN = n.toLowerCase();
+                // Agar naam ID jaisa hai ya verified hai to galat UID
+                if (lowN === "player" || lowN === "verified" || lowN === "id" || lowN === "uid" || lowN === "player id" || lowN === "id verified" || /^\d+$/.test(n) || !isValidPlayerName(n)) {
                     var extracted = extractNameFromText(data.message || "");
-                    if (extracted && isValidPlayerName(extracted)) {
+                    if (extracted && isValidPlayerName(extracted) && !/^\d+$/.test(extracted)) {
                         data.name = extracted;
                         data.success = true;
                     } else {
-                        // Still invalid - treat as failure so direct API retry or error shown
-                        if (n.toLowerCase() === "player") {
-                            data.success = false;
-                            data.message = data.message || "Could not fetch name, please try again";
-                        }
+                        // Still invalid - treat as failure = galat UID
+                        data.success = false;
+                        data.name = "";
+                        data.message = "Invalid UID - Player not found";
                     }
                 }
             }
