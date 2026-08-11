@@ -966,11 +966,31 @@
     /* NEW: Transfer Visual - FlashTOP -> UC -> BGMI */
     .transfer-visual {
       margin: 10px auto 22px auto;
-      max-width: 360px;
+      max-width: 400px;
       background: rgba(255,255,255,0.04);
       border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 14px;
-      padding: 14px 16px 10px 16px;
+      border-radius: 16px;
+      padding: 16px 16px 16px 16px;
+    }
+    /* Progress UC icon that moves with bar */
+    .game-loader-wrap .game-bar-bg {
+      position: relative;
+      overflow: visible;
+      height: 10px;
+      margin-top: 4px;
+    }
+    #progressUcIcon {
+      position: absolute;
+      width: 26px;
+      height: 26px;
+      object-fit: contain;
+      top: 50%;
+      left: 0%;
+      transform: translate(-50%, -50%);
+      filter: drop-shadow(0 0 8px rgba(255,184,0,0.9));
+      transition: left 1s linear;
+      z-index: 3;
+      pointer-events: none;
     }
     .tv-logos-row {
       display: flex;
@@ -1805,11 +1825,12 @@
     <!-- STEP 4: SUCCESS -->
     <div id="step4" class="step">
       <div class="step-content success-screen">
+        
         <div class="success-icon"><img src="order-confirm.webp" alt="Order Confirmed" id="orderConfirmImg" style="width:130px; height:auto; max-width:180px; filter: drop-shadow(0 0 24px rgba(255,184,0,0.35)); animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);" onerror="this.style.display='none'; this.parentElement.innerHTML='<i class=\'fa-regular fa-circle-check\' style=\'font-size:60px; color:var(--success);\'></i>'"></div>
         <h2 class="success-title" id="dispSuccessTitle">UC Purchased successfully</h2>
-        <!-- NEW: FlashTOP -> UC -> BGMI Travel Animation -->
+        <!-- COMBINED TILE: FlashTOP -> BGMI + User Details + Progress -->
         <div class="transfer-visual" id="transferVisual">
-            <div class="tv-logos-row">
+            <div class="tv-logos-row" id="tvLogosRow">
                 <img src="flashtop.webp" id="tvFlashLogo" alt="FlashTOP" class="tv-logo" onerror="this.src='flashtop.webp'">
                 <div class="tv-track-wrap">
                     <div class="tv-track-line"></div>
@@ -1818,35 +1839,41 @@
                 <img src="bgmi.webp" id="tvBgmiLogo" alt="BGMI" class="tv-logo" onerror="this.src='bgmi.webp'">
             </div>
             <div class="tv-labels"><span>FlashTOP</span><span>BGMI Account</span></div>
-        </div>
 
-        
-        
-        <div class="game-loader-wrap" id="gameLoaderWrap">
-            <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                <span class="delivery-msg" id="deliveryMsg">Connecting to BGMI Servers...</span>
-                <span class="timer-text" id="deliveryTimer" style="font-weight:700; letter-spacing:0.5px;">0%</span>
+            <!-- BGMI User ID, Name, UC Credited (moved inside same tile) -->
+            <div id="finalOrderDetailsTile" style="background: rgba(255,255,255,0.05); border: 1px solid var(--surface-border); border-radius: var(--radius-md); padding: 15px; margin-top: 18px; margin-bottom: 16px; text-align: left;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed rgba(255,255,255,0.1);">
+                    <span style="color: var(--text-muted); font-size: 13px;" id="dispFinalLblUid">BGMI User ID</span>
+                    <span id="finalUidVal" style="color: #fff; font-weight: 600; font-family: var(--font-display); font-size: 15px;">--</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed rgba(255,255,255,0.1);">
+                    <span style="color: var(--text-muted); font-size: 13px;" id="dispFinalLblIgn">BGMI ID Name</span>
+                    <span id="finalIgnVal" style="color: #fff; font-weight: 600; font-family: var(--font-display); font-size: 15px;">--</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: var(--text-muted); font-size: 13px;" id="dispFinalLblUc">UC Credited</span>
+                    <span style="color: var(--primary); font-weight: 700; font-family: var(--font-display); font-size: 14px; display: flex; align-items: center; gap: 6px;">
+                        <span id="finalUcVal">--</span>
+                    </span>
+                </div>
             </div>
-            <div class="game-bar-bg">
-                <div class="game-bar-fill" id="gameBarFill"></div>
-            </div>
-        </div>
-        <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 22px; margin-top: -12px; line-height:1.4;" id="dispStep4Subtitle">Your UC will be credited once the progress reaches 100%.</p>
 
-        <div id="finalOrderDetailsTile" style="background: rgba(255,255,255,0.05); border: 1px solid var(--surface-border); border-radius: var(--radius-md); padding: 15px; margin-bottom: 20px; text-align: left;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed rgba(255,255,255,0.1);">
-                <span style="color: var(--text-muted); font-size: 13px;" id="dispFinalLblUid">BGMI User ID</span>
-                <span id="finalUidVal" style="color: #fff; font-weight: 600; font-family: var(--font-display); font-size: 15px;">--</span>
+            <!-- Progress bar + progression message (moved inside same tile) -->
+            <div class="game-loader-wrap" id="gameLoaderWrap" style="margin: 0 0 8px 0;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                    <span class="delivery-msg" id="deliveryMsg">Connecting to BGMI Servers...</span>
+                    <span class="timer-text" id="deliveryTimer" style="font-weight:700; letter-spacing:0.5px;">0%</span>
+                </div>
+                <div class="game-bar-bg">
+                    <div class="game-bar-fill" id="gameBarFill"></div>
+                    <img id="progressUcIcon" src="uc-logo.webp" alt="UC" draggable="false">
+                </div>
             </div>
-            <div style="display: flex; justify-content: space-between; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed rgba(255,255,255,0.1);">
-                <span style="color: var(--text-muted); font-size: 13px;" id="dispFinalLblIgn">BGMI ID Name</span>
-                <span id="finalIgnVal" style="color: #fff; font-weight: 600; font-family: var(--font-display); font-size: 15px;">--</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="color: var(--text-muted); font-size: 13px;" id="dispFinalLblUc">UC Credited</span>
-                <span style="color: var(--primary); font-weight: 700; font-family: var(--font-display); font-size: 14px; display: flex; align-items: center; gap: 6px;">
-                    <span id="finalUcVal">--</span>
-                </span>
+            <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 2px; margin-top: 0; line-height:1.4; text-align:center;" id="dispStep4Subtitle">Your UC will be credited once the progress reaches 100%.</p>
+
+            <!-- UC Transfer Complete (now inside tile, hidden till 100%) -->
+            <div class="final-success-msg" id="dispFinalSuccessMsg" style="display:none; text-align:center; margin-top: 14px; font-size: 16px; font-weight: 700;">
+                 UC Transfer Complete.
             </div>
         </div>
 
@@ -1856,11 +1883,8 @@
              <span id="dispNightDesc">Instant delivery paused. UC will be credited after 9:00 AM.</span>
         </div>
 
-        <div class="final-success-msg" id="dispFinalSuccessMsg">
-             UC Transfer Complete.
-        </div>
-
         <div class="receipt-box" id="dispReceiptBox">
+
           <div style="color: var(--primary); margin-bottom: 15px; font-weight: 700; display:flex; justify-content:space-between;">
              <span id="dispReceiptTitle">RECEIPT</span>
              <span><span id="orderIdText" style="color: #fff; cursor: pointer;" onclick="copyOrderId()">--</span> <i class="fa-solid fa-copy" style="font-size:12px; margin-left:5px;"></i></span>
@@ -1872,7 +1896,7 @@
           <div class="receipt-row" style="border-bottom: 0; padding-bottom: 0; margin-bottom: 0;"><span class="receipt-label" id="dispLblTime">Time</span><span class="receipt-value" id="receipt-time">--</span></div>
           
           <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 15px; border-top: 1px dashed #333; padding-top: 15px; gap:10px;">
-              <span style="font-family: var(--font-display); font-weight:700; font-size:13px; letter-spacing:0.5px; color:#fff; text-transform:uppercase; opacity:0.9;">FlashTOP Official</span>
+              <span style="font-family: var(--font-display); font-weight:700; font-size:13px; letter-spacing:0.5px; color:#fff; text-transform:uppercase; opacity:0.9;">FlashTOP Officials</span>
               <img src="signature.webp" id="dispSignature" alt="Authorized Signature" style="max-height: 35px; user-select: none; pointer-events: none; flex-shrink:0;">
           </div>
         </div>
@@ -6214,21 +6238,40 @@ window.openModal = function(modalId, isBack = false) {
     }
 
     function startDeliveryTimer() {
-        const duration = 180; const timerText = document.getElementById('deliveryTimer'); const fillBar = document.getElementById('gameBarFill'); const msg = document.getElementById('deliveryMsg');
+        const duration = 180; 
+        const timerText = document.getElementById('deliveryTimer'); 
+        const fillBar = document.getElementById('gameBarFill'); 
+        const msg = document.getElementById('deliveryMsg');
+        const progressUcIcon = document.getElementById('progressUcIcon');
+        const tvUcIcon = document.getElementById('tvUcIcon');
         let endTime = localStorage.getItem('bgmiTimerEnd');
         if (!endTime) { endTime = new Date().getTime() + (duration * 1000); localStorage.setItem('bgmiTimerEnd', endTime); }
 
         const timerInterval = setInterval(() => {
             const now = new Date().getTime(); const distance = endTime - now; let secondsLeft = Math.floor(distance / 1000);
             if (distance < 0) {
-                clearInterval(timerInterval); fillBar.style.width = "100%"; if(timerText) timerText.textContent = "100%"; msg.textContent = getText('loaderMsgDone');
-                document.getElementById('gameLoaderWrap').style.display = 'none'; document.getElementById('dispFinalSuccessMsg').style.display = 'block';
+                clearInterval(timerInterval); 
+                fillBar.style.width = "100%"; 
+                if(progressUcIcon) progressUcIcon.style.left = "100%";
+                if(timerText) timerText.textContent = "100%"; 
+                if(msg) msg.textContent = getText('loaderMsgDone');
+                // 1. FlashTOP se UC logo travel wala gayab ho jaye at 100%
+                if(tvUcIcon) tvUcIcon.style.display = 'none';
+                // 4. Progress bar + progression messages + subtitle hat jaye, UC transfer complete dikhe
+                const loaderWrap = document.getElementById('gameLoaderWrap');
+                const subTitle = document.getElementById('dispStep4Subtitle');
+                if(loaderWrap) loaderWrap.style.display = 'none'; 
+                if(subTitle) subTitle.style.display = 'none';
+                const finalMsg = document.getElementById('dispFinalSuccessMsg');
+                if(finalMsg) finalMsg.style.display = 'block';
                 localStorage.removeItem('bgmiTimerEnd'); createConfetti(); triggerHaptic('success'); return;
             }
             const totalDuration = 180; 
             const percentage = ((totalDuration - secondsLeft) / totalDuration) * 100; 
             const clamped = Math.min(100, Math.max(0, percentage));
             fillBar.style.width = clamped + "%";
+            // 3. Progress bar pe UC logo move kare
+            if(progressUcIcon) progressUcIcon.style.left = clamped + "%";
             if(timerText) timerText.textContent = Math.floor(clamped) + "%";
             
             if(clamped < 20) msg.textContent = getText('loaderMsg1'); 
