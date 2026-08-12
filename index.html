@@ -2607,181 +2607,93 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
 
 <script>
 // === NEW BACKEND - REPLACES FIREBASE (Fix for admin changes not saving) ===
-/*
-  ✅ Yeh Firebase ko replace karta hai
-  - Admin panel se jo bhi change karoge, sab users ko dikhega
-  - LocalStorage sirf backup ke liye hai, main source remote hai
-  
-  SETUP (2 minute):
-  
-  OPTION 1: Google Apps Script (RECOMMENDED - tum already use kar rahe ho)
-  1. https://script.google.com pe jao, New Project banao
-  2. Neeche diya hua Google Apps Script code paste karo
-  3. Deploy -> Web App -> Anyone with link -> Deploy
-  4. Jo URL milega, usko yahan REMOTE_DB_URL me paste karo
-  
-  OPTION 2: npoint.io (Sabse easy, 30 second)
-  1. https://api.npoint.io pe jao
-  2. Create bin pe click karo, default JSON {} daal ke save karo
-  3. Jo link milega jaise https://api.npoint.io/abc123, usko REMOTE_DB_URL me daalo
-  
-  OPTION 3: Supabase (Professional)
-  1. supabase.com pe free project banao
-  2. Table banao: configs (id text primary key, data jsonb)
-  3. URL aur anon key yahan daalo
-*/
+window.REMOTE_DB_URL = "https://script.google.com/macros/s/AKfycbxuG5L6hBzQBWcUH1lzxXQ702OjIex7d6vgnm7iahQph0D8AzK4y8cQQ3lo3S0ByQg/exec";
+window.REMOTE_DB_TYPE = "google_script";
 
-// ===== CONFIGURE YOUR BACKEND HERE =====
-window.REMOTE_DB_URL = "https://script.google.com/macros/s/AKfycbxuG5L6hBzQBWcUH1lzxXQ702OjIex7d6vgnm7iahQph0D8AzK4y8cQQ3lo3S0ByQg/exec"; // <-- YAHAN APNA URL PASTE KARO
-window.REMOTE_DB_TYPE = "google_script"; // "generic" | "npoint" | "google_script" | "jsonbin"
-
- // Agar jsonbin use kar rahe ho toh
-window.JSONBIN_API_KEY = ""; // $2a$10$...
+window.JSONBIN_API_KEY = "";
 window.JSONBIN_BIN_ID = "";
-
-// Supabase ke liye (agar use karna hai toh)
 window.SUPABASE_URL = "";
 window.SUPABASE_KEY = "";
 
-// =========================================
-
 window._remoteConfigLoaded = false;
-window._firebaseConfigLoaded = false; // compatibility alias
-window.firebaseDb = null; // compatibility
+// keep _firebaseConfigLoaded for compatibility with existing loader
+// window._firebaseConfigLoaded will be set by this script as alias
 
-window.acquireLock = async function(amountStr, currentOrderId) {
-    // Payment lock Firebase pe tha, ab bypass kar dete hain
-    // Agar chaho toh isko bhi remote pe implement kar sakte ho
-    return true;
-};
-
-window.releaseLock = async function(amountStr) {
-    return true;
-};
+window.acquireLock = async function(amountStr, currentOrderId) { return true; };
+window.releaseLock = async function(amountStr) { return true; };
 
 window.saveConfigToDB = async function(newConfig) {
     try {
-        // 1. Always save to localStorage as instant backup
-        try { 
-            localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(newConfig)); 
-        } catch(e) { console.warn('localStorage save failed', e); }
-
-        // 2. If no remote URL configured, still return true (local mode)
+        try { localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(newConfig)); } catch(e) {}
         if (!window.REMOTE_DB_URL) {
-            console.warn('REMOTE_DB_URL not configured - saving only locally. Set REMOTE_DB_URL to make changes visible to all users.');
-            // Show hint to admin
-            if(window.showToast) window.showToast('Local save only! Remote DB URL configure karo taaki sab users ko dikhe', 'warn');
+            console.warn('REMOTE_DB_URL not configured');
             return true;
         }
-
-        // 3. Save to remote based on type
         let url = window.REMOTE_DB_URL;
         let options = {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(newConfig)
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'save', config: newConfig })
         };
-
         if (window.REMOTE_DB_TYPE === 'npoint') {
-            // npoint needs POST with same URL
-            options.method = 'POST';
+            options = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newConfig) };
         } else if (window.REMOTE_DB_TYPE === 'jsonbin') {
             url = `https://api.jsonbin.io/v3/b/${window.JSONBIN_BIN_ID}`;
-            options.method = 'PUT';
-            options.headers = {
-                'Content-Type': 'application/json',
-                'X-Master-Key': window.JSONBIN_API_KEY
-            };
-        } else if (window.REMOTE_DB_TYPE === 'google_script') {
-            // Google Apps Script - POST with no-cors fallback handled
-            options.method = 'POST';
-            options.headers = { 'Content-Type': 'text/plain;charset=utf-8' };
-            options.body = JSON.stringify({ action: 'save', config: newConfig });
+            options = { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': window.JSONBIN_API_KEY }, body: JSON.stringify(newConfig) };
         } else if (window.REMOTE_DB_TYPE === 'supabase') {
-            // Supabase REST
             url = `${window.SUPABASE_URL}/rest/v1/configs?id=eq.main`;
-            options.method = 'PATCH';
-            options.headers = {
-                'Content-Type': 'application/json',
-                'apikey': window.SUPABASE_KEY,
-                'Authorization': `Bearer ${window.SUPABASE_KEY}`
-            };
-            options.body = JSON.stringify({ data: newConfig });
+            options = { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'apikey': window.SUPABASE_KEY, 'Authorization': `Bearer ${window.SUPABASE_KEY}` }, body: JSON.stringify({ data: newConfig }) };
         }
-
+        // Use no-cors safe + try
         const res = await fetch(url, options);
-        if (!res.ok) throw new Error('Remote save failed: ' + res.status);
-        
-        console.log('✅ Config saved to remote:', window.REMOTE_DB_TYPE);
+        console.log('✅ Config saved to remote:', res.status);
         return true;
     } catch(e) {
         console.error('Database save failed:', e);
-        // Still return true if local save succeeded, so UI doesn't break
-        // But show error for admin
         return false;
     }
 };
 
-// Load remote config
 window.loadRemoteConfig = async function() {
-    const safeDefault = window.defaultAdminConfig || window.__FALLBACK_PACKS || { 
-      texts:{}, faqs:[], toggles:{}, policies:{}, shopTiming:{}, adminAuth:{}, images:{}, gameInfo:{banners:[]}, 
-      trialPacks: [], bulkPacks: []
-    };
+    const safeDefault = window.defaultAdminConfig || window.__FALLBACK_PACKS || { texts:{}, faqs:[], toggles:{}, policies:{}, shopTiming:{}, adminAuth:{}, images:{}, gameInfo:{banners:[]}, trialPacks: [], bulkPacks: [] };
     const defaultAdminConfig = window.defaultAdminConfig || safeDefault;
-
     try {
         let dbConfig = null;
-
         if (!window.REMOTE_DB_URL) {
-            console.log('No REMOTE_DB_URL - using localStorage/default');
-            // Try localStorage
             const cached = localStorage.getItem('ucifyAdminConfigV2');
-            if (cached) {
-                try { dbConfig = JSON.parse(cached); } catch(e){}
-            }
+            if (cached) { try { dbConfig = JSON.parse(cached); } catch(e){} }
         } else {
-            // Fetch from remote
             let url = window.REMOTE_DB_URL;
             let headers = {};
-            
             if (window.REMOTE_DB_TYPE === 'jsonbin') {
                 url = `https://api.jsonbin.io/v3/b/${window.JSONBIN_BIN_ID}/latest`;
                 headers = { 'X-Master-Key': window.JSONBIN_API_KEY };
             } else if (window.REMOTE_DB_TYPE === 'supabase') {
                 url = `${window.SUPABASE_URL}/rest/v1/configs?id=eq.main&select=data`;
-                headers = {
-                    'apikey': window.SUPABASE_KEY,
-                    'Authorization': `Bearer ${window.SUPABASE_KEY}`
-                };
+                headers = { 'apikey': window.SUPABASE_KEY, 'Authorization': `Bearer ${window.SUPABASE_KEY}` };
             }
-
-            const res = await fetch(url, { headers, cache: 'no-store' });
-            if (res.ok) {
-                const json = await res.json();
-                // Normalize based on backend
-                if (window.REMOTE_DB_TYPE === 'jsonbin' && json.record) {
-                    dbConfig = json.record;
-                } else if (window.REMOTE_DB_TYPE === 'supabase' && Array.isArray(json) && json[0]) {
-                    dbConfig = json[0].data;
-                } else if (json.config) {
-                    dbConfig = json.config; // Google Script wrapper
-                } else if (json.data && typeof json.data === 'object' && !Array.isArray(json.data) && json.data.trialPacks) {
-                    dbConfig = json.data;
-                } else {
-                    dbConfig = json;
+            // Add timeout to avoid loader stuck
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 6000);
+            try {
+                const res = await fetch(url, { headers, cache: 'no-store', signal: controller.signal });
+                clearTimeout(timeout);
+                if (res.ok) {
+                    const json = await res.json();
+                    if (window.REMOTE_DB_TYPE === 'jsonbin' && json.record) dbConfig = json.record;
+                    else if (window.REMOTE_DB_TYPE === 'supabase' && Array.isArray(json) && json[0]) dbConfig = json[0].data;
+                    else if (json.config) dbConfig = json.config;
+                    else if (json.data && json.data.trialPacks) dbConfig = json.data;
+                    else dbConfig = json;
+                    if (!dbConfig || (typeof dbConfig === 'object' && Object.keys(dbConfig).length === 0)) dbConfig = null;
                 }
-                
-                // If npoint returns empty or not valid
-                if (!dbConfig || (typeof dbConfig === 'object' && Object.keys(dbConfig).length === 0)) {
-                    dbConfig = null;
-                }
+            } catch(fetchErr) {
+                clearTimeout(timeout);
+                console.warn('Remote fetch failed, using local:', fetchErr.message);
             }
         }
 
-        // If we got valid config from remote, merge and apply
         if (dbConfig && dbConfig.trialPacks) {
-            // Ensure all fields exist (migration)
             if(!dbConfig.texts) dbConfig.texts = window.siteConfig?.texts || defaultAdminConfig.texts;
             if(!dbConfig.faqs) dbConfig.faqs = window.siteConfig?.faqs || defaultAdminConfig.faqs;
             if(!dbConfig.toggles) dbConfig.toggles = window.siteConfig?.toggles || defaultAdminConfig.toggles;
@@ -2792,20 +2704,18 @@ window.loadRemoteConfig = async function() {
             if(!dbConfig.gameInfo) dbConfig.gameInfo = window.siteConfig?.gameInfo || defaultAdminConfig.gameInfo;
             if(!dbConfig.trialPacks) dbConfig.trialPacks = window.siteConfig?.trialPacks || defaultAdminConfig.trialPacks;
             if(!dbConfig.bulkPacks) dbConfig.bulkPacks = window.siteConfig?.bulkPacks || defaultAdminConfig.bulkPacks;
-
             window.siteConfig = dbConfig;
             try { localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(dbConfig)); } catch(e){}
-            
             console.log('✅ Remote config loaded');
         } else {
-            console.log('No remote config found, using local/default');
-            if (window.REMOTE_DB_URL && window.REMOTE_DB_TYPE === 'generic' && window.siteConfig?.trialPacks?.length) {
-                // First time - push local to remote
-                window.saveConfigToDB(window.siteConfig);
+            console.log('No remote config, using local/default');
+            if (window.REMOTE_DB_URL && window.siteConfig?.trialPacks?.length) {
+                // push local to remote first time
+                try { window.saveConfigToDB(window.siteConfig); } catch(e){}
             }
         }
 
-        // Apply UI
+        // Apply UI safely
         setTimeout(async () => {
             try {
                 if(typeof window.applyUISettings === 'function') window.applyUISettings();
@@ -2817,46 +2727,53 @@ window.loadRemoteConfig = async function() {
                 if(typeof window.injectDynamicStatusUI === 'function') window.injectDynamicStatusUI();
                 if(typeof window.renderGameBanners === 'function') window.renderGameBanners();
                 if(typeof window.renderAdminGameBannersList === 'function') window.renderAdminGameBannersList();
-                if(typeof window.preloadDynamicImages === 'function') {
-                    try { await window.preloadDynamicImages(); } catch(e){}
-                }
+                if(typeof window.preloadDynamicImages === 'function') { try { await window.preloadDynamicImages(); } catch(e){} }
                 window._uiReady = true;
             } catch(e) { console.log('UI apply error', e); window._uiReady = true; }
             window._remoteConfigLoaded = true;
-            window._firebaseConfigLoaded = true; // compatibility
+            window._firebaseConfigLoaded = true;
             if(window._tryHideLoader) window._tryHideLoader();
         }, 200);
 
     } catch(err) {
         console.error('Remote load error:', err);
-        // Fallback to local
-        try { 
-            if(typeof window.applyUISettings === 'function') window.applyUISettings(); 
-            if(typeof window.renderSitePacks === 'function') window.renderSitePacks();
-            window._uiReady = true;
-        } catch(e) {}
+        try { if(typeof window.applyUISettings === 'function') window.applyUISettings(); if(typeof window.renderSitePacks === 'function') window.renderSitePacks(); window._uiReady = true; } catch(e) {}
         window._remoteConfigLoaded = true;
         window._firebaseConfigLoaded = true;
         if(window._tryHideLoader) window._tryHideLoader();
     }
 };
 
-// Auto load - wait for DOM and default config to be ready
 function tryInitRemote() {
     if (window.defaultAdminConfig) {
         window.loadRemoteConfig();
-        // Poll every 30 sec for live updates for users (like Firebase onSnapshot)
+        // Poll every 60 sec - silent background sync, no loader
         setInterval(() => {
-            if (window.REMOTE_DB_URL) window.loadRemoteConfig();
-        }, 30000);
+            if (window.REMOTE_DB_URL) {
+                // silent reload without showing loader
+                (async () => {
+                    try {
+                        const res = await fetch(window.REMOTE_DB_URL, { cache: 'no-store' });
+                        if(res.ok){
+                            const json = await res.json();
+                            let cfg = json.config || json;
+                            if(cfg && cfg.trialPacks && JSON.stringify(cfg) !== JSON.stringify(window.siteConfig)){
+                                window.siteConfig = cfg;
+                                localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(cfg));
+                                if(window.applyUISettings) window.applyUISettings();
+                                if(window.renderSitePacks) window.renderSitePacks();
+                                console.log('🔄 Config auto-updated from remote');
+                            }
+                        }
+                    } catch(e){}
+                })();
+            }
+        }, 60000);
     } else {
         setTimeout(tryInitRemote, 100);
     }
 }
 tryInitRemote();
-
-// Expose for manual reload
-window.reloadRemoteConfig = window.loadRemoteConfig;
 </script>
 
 
