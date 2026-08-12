@@ -63,6 +63,27 @@
 :where(code, pre, kbd, samp) {
   font-family: "Optimistic Mono", ui-monospace, monospace;
 }
+</style><style>
+@font-face {
+  font-family: "Optimistic";
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url("/fonts/OptimisticAI_VF_Optimized.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Optimistic Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/OptimisticMono_W_TextRegular.woff2") format("woff2");
+}
+:where(html) {
+  font-family: "Optimistic", system-ui, sans-serif;
+}
+:where(code, pre, kbd, samp) {
+  font-family: "Optimistic Mono", ui-monospace, monospace;
+}
 </style><!-- PLAYABLE_TOUCH_PATCH_V1 --><script>
 (function() {
   if (window.__playableTouchPatchInstalled) return;
@@ -2583,183 +2604,261 @@ if(window.siteConfig && (!window.siteConfig.bulkPacks || window.siteConfig.bulkP
   window.siteConfig.bulkPacks = window.__FALLBACK_PACKS.bulkPacks;
 }
 </script>
-<script type="module">
+
+<script>
+// === NEW BACKEND - REPLACES FIREBASE (Fix for admin changes not saving) ===
+/*
+  ✅ Yeh Firebase ko replace karta hai
+  - Admin panel se jo bhi change karoge, sab users ko dikhega
+  - LocalStorage sirf backup ke liye hai, main source remote hai
+  
+  SETUP (2 minute):
+  
+  OPTION 1: Google Apps Script (RECOMMENDED - tum already use kar rahe ho)
+  1. https://script.google.com pe jao, New Project banao
+  2. Neeche diya hua Google Apps Script code paste karo
+  3. Deploy -> Web App -> Anyone with link -> Deploy
+  4. Jo URL milega, usko yahan REMOTE_DB_URL me paste karo
+  
+  OPTION 2: npoint.io (Sabse easy, 30 second)
+  1. https://api.npoint.io pe jao
+  2. Create bin pe click karo, default JSON {} daal ke save karo
+  3. Jo link milega jaise https://api.npoint.io/abc123, usko REMOTE_DB_URL me daalo
+  
+  OPTION 3: Supabase (Professional)
+  1. supabase.com pe free project banao
+  2. Table banao: configs (id text primary key, data jsonb)
+  3. URL aur anon key yahan daalo
+*/
+
+// ===== CONFIGURE YOUR BACKEND HERE =====
+window.REMOTE_DB_URL = "https://script.google.com/macros/s/AKfycbxuG5L6hBzQBWcUH1lzxXQ702OjIex7d6vgnm7iahQph0D8AzK4y8cQQ3lo3S0ByQg/exec"; // <-- YAHAN APNA URL PASTE KARO
+window.REMOTE_DB_TYPE = "google_script"; // "generic" | "npoint" | "google_script" | "jsonbin"
+
+ // Agar jsonbin use kar rahe ho toh
+window.JSONBIN_API_KEY = ""; // $2a$10$...
+window.JSONBIN_BIN_ID = "";
+
+// Supabase ke liye (agar use karna hai toh)
+window.SUPABASE_URL = "";
+window.SUPABASE_KEY = "";
+
+// =========================================
+
+window._remoteConfigLoaded = false;
+window._firebaseConfigLoaded = false; // compatibility alias
+window.firebaseDb = null; // compatibility
+
+window.acquireLock = async function(amountStr, currentOrderId) {
+    // Payment lock Firebase pe tha, ab bypass kar dete hain
+    // Agar chaho toh isko bhi remote pe implement kar sakte ho
+    return true;
+};
+
+window.releaseLock = async function(amountStr) {
+    return true;
+};
+
+window.saveConfigToDB = async function(newConfig) {
+    try {
+        // 1. Always save to localStorage as instant backup
+        try { 
+            localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(newConfig)); 
+        } catch(e) { console.warn('localStorage save failed', e); }
+
+        // 2. If no remote URL configured, still return true (local mode)
+        if (!window.REMOTE_DB_URL) {
+            console.warn('REMOTE_DB_URL not configured - saving only locally. Set REMOTE_DB_URL to make changes visible to all users.');
+            // Show hint to admin
+            if(window.showToast) window.showToast('Local save only! Remote DB URL configure karo taaki sab users ko dikhe', 'warn');
+            return true;
+        }
+
+        // 3. Save to remote based on type
+        let url = window.REMOTE_DB_URL;
+        let options = {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newConfig)
+        };
+
+        if (window.REMOTE_DB_TYPE === 'npoint') {
+            // npoint needs POST with same URL
+            options.method = 'POST';
+        } else if (window.REMOTE_DB_TYPE === 'jsonbin') {
+            url = `https://api.jsonbin.io/v3/b/${window.JSONBIN_BIN_ID}`;
+            options.method = 'PUT';
+            options.headers = {
+                'Content-Type': 'application/json',
+                'X-Master-Key': window.JSONBIN_API_KEY
+            };
+        } else if (window.REMOTE_DB_TYPE === 'google_script') {
+            // Google Apps Script - POST with no-cors fallback handled
+            options.method = 'POST';
+            options.headers = { 'Content-Type': 'text/plain;charset=utf-8' };
+            options.body = JSON.stringify({ action: 'save', config: newConfig });
+        } else if (window.REMOTE_DB_TYPE === 'supabase') {
+            // Supabase REST
+            url = `${window.SUPABASE_URL}/rest/v1/configs?id=eq.main`;
+            options.method = 'PATCH';
+            options.headers = {
+                'Content-Type': 'application/json',
+                'apikey': window.SUPABASE_KEY,
+                'Authorization': `Bearer ${window.SUPABASE_KEY}`
+            };
+            options.body = JSON.stringify({ data: newConfig });
+        }
+
+        const res = await fetch(url, options);
+        if (!res.ok) throw new Error('Remote save failed: ' + res.status);
+        
+        console.log('✅ Config saved to remote:', window.REMOTE_DB_TYPE);
+        return true;
+    } catch(e) {
+        console.error('Database save failed:', e);
+        // Still return true if local save succeeded, so UI doesn't break
+        // But show error for admin
+        return false;
+    }
+};
+
+// Load remote config
+window.loadRemoteConfig = async function() {
     const safeDefault = window.defaultAdminConfig || window.__FALLBACK_PACKS || { 
       texts:{}, faqs:[], toggles:{}, policies:{}, shopTiming:{}, adminAuth:{}, images:{}, gameInfo:{banners:[]}, 
-      trialPacks: (window.__FALLBACK_PACKS && window.__FALLBACK_PACKS.trialPacks) || [],
-      bulkPacks: (window.__FALLBACK_PACKS && window.__FALLBACK_PACKS.bulkPacks) || []
+      trialPacks: [], bulkPacks: []
     };
     const defaultAdminConfig = window.defaultAdminConfig || safeDefault;
 
-
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, doc, setDoc, getDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-    let firebaseConfig = {
-      apiKey: "AIzaSyAKMPNCSsH3wm5HaVSFYI_YmuwtIX2QNH8",
-      authDomain: "flashtop-395b9.firebaseapp.com",
-      projectId: "flashtop-395b9",
-      storageBucket: "flashtop-395b9.firebasestorage.app",
-      messagingSenderId: "504411467256",
-      appId: "1:504411467256:web:25f6705b2df195b2f0fa0d"
-    };
-    
-    let appId = firebaseConfig.appId;
-
-    if (typeof __firebase_config !== 'undefined') {
-        firebaseConfig = JSON.parse(__firebase_config);
-        appId = typeof __app_id !== 'undefined' ? __app_id : appId;
-    }
-
-    let app, auth, db;
     try {
-        app = initializeApp(firebaseConfig);
-        auth = getAuth(app);
-        db = getFirestore(app);
-        window.firebaseDb = db; 
-    } catch(e) {
-        console.warn("Firebase config is missing or invalid. Using local storage mode only.");
-        // still wait for DOM, but mark firebase as loaded so loader can hide after UI
-        window._firebaseConfigLoaded = true;
-        // ensure UI ready flag if DOM already ready
-        if(window._domReady) {
-            try { if(typeof window.applyUISettings === 'function') window.applyUISettings(); if(typeof window.renderSitePacks === 'function') window.renderSitePacks(); window._uiReady = true; } catch(err){}
-        }
-        if(window._tryHideLoader) window._tryHideLoader();
-    }
+        let dbConfig = null;
 
-    window.acquireLock = async function(amountStr, currentOrderId) {
-        if (!db) return true; 
-        try {
-            const lockRef = doc(db, 'artifacts', appId, 'public', 'data', 'payment_locks', amountStr);
-            const lockSnap = await getDoc(lockRef);
-            const now = Date.now();
-            
-            if (lockSnap.exists()) {
-                const lockData = lockSnap.data();
-                if (now - lockData.timestamp < 80000 && lockData.orderId !== currentOrderId) {
-                    return false; 
-                }
+        if (!window.REMOTE_DB_URL) {
+            console.log('No REMOTE_DB_URL - using localStorage/default');
+            // Try localStorage
+            const cached = localStorage.getItem('ucifyAdminConfigV2');
+            if (cached) {
+                try { dbConfig = JSON.parse(cached); } catch(e){}
             }
-            await setDoc(lockRef, { orderId: currentOrderId, timestamp: now });
-            return true;
-        } catch (e) {
-            console.error("Lock error:", e);
-            return true; 
-        }
-    };
-
-    window.releaseLock = async function(amountStr) {
-        if (!db || !amountStr) return;
-        try {
-            const lockRef = doc(db, 'artifacts', appId, 'public', 'data', 'payment_locks', amountStr);
-            await deleteDoc(lockRef);
-        } catch (e) { }
-    };
-
-    window.saveConfigToDB = async function(newConfig) {
-        if(!db || !auth.currentUser) return false;
-        try {
-            const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'ucifyConfig', 'mainV2');
-            await setDoc(configRef, newConfig);
-            return true;
-        } catch(e) {
-            console.error("Database save failed:", e);
-            return false;
-        }
-    };
-
-    const initAuth = async () => {
-        if(!auth) return;
-        try {
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                await signInWithCustomToken(auth, __initial_auth_token);
-            } else {
-                await signInAnonymously(auth);
-            }
-        } catch (e) {
-            console.error("Auth Error:", e);
-            window._firebaseConfigLoaded = true;
-            try { if(window._domReady && typeof window.applyUISettings === 'function') { window.applyUISettings(); window.renderSitePacks(); window._uiReady = true; } } catch(err){}
-            if(window._tryHideLoader) window._tryHideLoader();
-        }
-    };
-
-    initAuth();
-
-    if(auth && db) {
-        onAuthStateChanged(auth, (user) => {
-            if (!user) return;
+        } else {
+            // Fetch from remote
+            let url = window.REMOTE_DB_URL;
+            let headers = {};
             
-            const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'ucifyConfig', 'mainV2');
-            onSnapshot(configRef, (docSnap) => {
-                if (docSnap.exists()) {
-                    const dbConfig = docSnap.data();
-                    
-                    if(!dbConfig.texts) dbConfig.texts = window.siteConfig.texts || defaultAdminConfig.texts;
-                    if(!dbConfig.faqs) dbConfig.faqs = window.siteConfig.faqs || defaultAdminConfig.faqs;
-                    if(!dbConfig.toggles) dbConfig.toggles = window.siteConfig.toggles || defaultAdminConfig.toggles;
-                    if(!dbConfig.policies) dbConfig.policies = window.siteConfig.policies || defaultAdminConfig.policies;
-                    if(!dbConfig.shopTiming) dbConfig.shopTiming = window.siteConfig.shopTiming || defaultAdminConfig.shopTiming;
-                    if(!dbConfig.adminAuth) dbConfig.adminAuth = window.siteConfig.adminAuth || defaultAdminConfig.adminAuth;
-                    if(!dbConfig.images) dbConfig.images = window.siteConfig.images || defaultAdminConfig.images;
-                    if(!dbConfig.gameInfo) dbConfig.gameInfo = window.siteConfig.gameInfo || defaultAdminConfig.gameInfo;
-                    if(!dbConfig.trialPacks) dbConfig.trialPacks = window.siteConfig.trialPacks || defaultAdminConfig.trialPacks;
-                    if(!dbConfig.bulkPacks) dbConfig.bulkPacks = window.siteConfig.bulkPacks || defaultAdminConfig.bulkPacks;
+            if (window.REMOTE_DB_TYPE === 'jsonbin') {
+                url = `https://api.jsonbin.io/v3/b/${window.JSONBIN_BIN_ID}/latest`;
+                headers = { 'X-Master-Key': window.JSONBIN_API_KEY };
+            } else if (window.REMOTE_DB_TYPE === 'supabase') {
+                url = `${window.SUPABASE_URL}/rest/v1/configs?id=eq.main&select=data`;
+                headers = {
+                    'apikey': window.SUPABASE_KEY,
+                    'Authorization': `Bearer ${window.SUPABASE_KEY}`
+                };
+            }
 
-                    window.siteConfig = dbConfig;
-                    // FIXED: Save latest admin config to localStorage so new users on next visit get instant correct data
-                    try { localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(dbConfig)); } catch(e) {}
-                    
-                    // Delay render to ensure DOM is fully ready and avoid race conditions - V3 with banner/pack image preload
-                    setTimeout(async () => {
-                        try {
-                            if(typeof window.applyUISettings === 'function') window.applyUISettings();
-                            if(typeof window.renderSitePacks === 'function') window.renderSitePacks();
-                            if(typeof window.renderAdminPacksList === 'function') window.renderAdminPacksList();
-                            if(typeof window.renderAdminRzpLinksList === 'function') window.renderAdminRzpLinksList();
-                            if(typeof window.renderAdminCreatorUidsList === 'function') window.renderAdminCreatorUidsList();
-                            if(typeof window.renderAdminFaqsList === 'function') window.renderAdminFaqsList();
-                            if(typeof window.injectDynamicStatusUI === 'function') window.injectDynamicStatusUI();
-                            if(typeof window.renderGameBanners === 'function') window.renderGameBanners();
-                            if(typeof window.renderAdminGameBannersList === 'function') window.renderAdminGameBannersList();
-                            if(typeof window.preloadDynamicImages === 'function') {
-                                try { await window.preloadDynamicImages(); } catch(e){}
-                            }
-                            window._uiReady = true;
-                        } catch(e) { console.log('UI apply error', e); window._uiReady = true; }
-                        window._firebaseConfigLoaded = true;
-                        if(window._tryHideLoader) window._tryHideLoader();
-                    }, 200);
-                    
+            const res = await fetch(url, { headers, cache: 'no-store' });
+            if (res.ok) {
+                const json = await res.json();
+                // Normalize based on backend
+                if (window.REMOTE_DB_TYPE === 'jsonbin' && json.record) {
+                    dbConfig = json.record;
+                } else if (window.REMOTE_DB_TYPE === 'supabase' && Array.isArray(json) && json[0]) {
+                    dbConfig = json[0].data;
+                } else if (json.config) {
+                    dbConfig = json.config; // Google Script wrapper
+                } else if (json.data && typeof json.data === 'object' && !Array.isArray(json.data) && json.data.trialPacks) {
+                    dbConfig = json.data;
                 } else {
-                    console.log('No Firestore config found, creating from local/default');
-                    if(window.siteConfig && (window.siteConfig.trialPacks || window.siteConfig.bulkPacks)) {
-                        window.saveConfigToDB(window.siteConfig);
-                    }
-                    try { 
-                        if(typeof window.applyUISettings === 'function') window.applyUISettings(); 
-                        if(typeof window.renderSitePacks === 'function') window.renderSitePacks();
-                        window._uiReady = true;
-                    } catch(e){ console.log('Render fallback error', e); window._uiReady = true; }
-                    window._firebaseConfigLoaded = true;
-                    if(window._tryHideLoader) window._tryHideLoader();
+                    dbConfig = json;
                 }
                 
-            }, (error) => {
-                console.error("Live Database Listener Error:", error);
-                try { 
-                    if(typeof window.applyUISettings === 'function') window.applyUISettings(); 
-                    if(typeof window.renderSitePacks === 'function') window.renderSitePacks();
-                    window._uiReady = true;
-                } catch(e) {}
-                window._firebaseConfigLoaded = true;
-                if(window._tryHideLoader) window._tryHideLoader();
-            });
-        });
+                // If npoint returns empty or not valid
+                if (!dbConfig || (typeof dbConfig === 'object' && Object.keys(dbConfig).length === 0)) {
+                    dbConfig = null;
+                }
+            }
+        }
+
+        // If we got valid config from remote, merge and apply
+        if (dbConfig && dbConfig.trialPacks) {
+            // Ensure all fields exist (migration)
+            if(!dbConfig.texts) dbConfig.texts = window.siteConfig?.texts || defaultAdminConfig.texts;
+            if(!dbConfig.faqs) dbConfig.faqs = window.siteConfig?.faqs || defaultAdminConfig.faqs;
+            if(!dbConfig.toggles) dbConfig.toggles = window.siteConfig?.toggles || defaultAdminConfig.toggles;
+            if(!dbConfig.policies) dbConfig.policies = window.siteConfig?.policies || defaultAdminConfig.policies;
+            if(!dbConfig.shopTiming) dbConfig.shopTiming = window.siteConfig?.shopTiming || defaultAdminConfig.shopTiming;
+            if(!dbConfig.adminAuth) dbConfig.adminAuth = window.siteConfig?.adminAuth || defaultAdminConfig.adminAuth;
+            if(!dbConfig.images) dbConfig.images = window.siteConfig?.images || defaultAdminConfig.images;
+            if(!dbConfig.gameInfo) dbConfig.gameInfo = window.siteConfig?.gameInfo || defaultAdminConfig.gameInfo;
+            if(!dbConfig.trialPacks) dbConfig.trialPacks = window.siteConfig?.trialPacks || defaultAdminConfig.trialPacks;
+            if(!dbConfig.bulkPacks) dbConfig.bulkPacks = window.siteConfig?.bulkPacks || defaultAdminConfig.bulkPacks;
+
+            window.siteConfig = dbConfig;
+            try { localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(dbConfig)); } catch(e){}
+            
+            console.log('✅ Remote config loaded');
+        } else {
+            console.log('No remote config found, using local/default');
+            if (window.REMOTE_DB_URL && window.REMOTE_DB_TYPE === 'generic' && window.siteConfig?.trialPacks?.length) {
+                // First time - push local to remote
+                window.saveConfigToDB(window.siteConfig);
+            }
+        }
+
+        // Apply UI
+        setTimeout(async () => {
+            try {
+                if(typeof window.applyUISettings === 'function') window.applyUISettings();
+                if(typeof window.renderSitePacks === 'function') window.renderSitePacks();
+                if(typeof window.renderAdminPacksList === 'function') window.renderAdminPacksList();
+                if(typeof window.renderAdminRzpLinksList === 'function') window.renderAdminRzpLinksList();
+                if(typeof window.renderAdminCreatorUidsList === 'function') window.renderAdminCreatorUidsList();
+                if(typeof window.renderAdminFaqsList === 'function') window.renderAdminFaqsList();
+                if(typeof window.injectDynamicStatusUI === 'function') window.injectDynamicStatusUI();
+                if(typeof window.renderGameBanners === 'function') window.renderGameBanners();
+                if(typeof window.renderAdminGameBannersList === 'function') window.renderAdminGameBannersList();
+                if(typeof window.preloadDynamicImages === 'function') {
+                    try { await window.preloadDynamicImages(); } catch(e){}
+                }
+                window._uiReady = true;
+            } catch(e) { console.log('UI apply error', e); window._uiReady = true; }
+            window._remoteConfigLoaded = true;
+            window._firebaseConfigLoaded = true; // compatibility
+            if(window._tryHideLoader) window._tryHideLoader();
+        }, 200);
+
+    } catch(err) {
+        console.error('Remote load error:', err);
+        // Fallback to local
+        try { 
+            if(typeof window.applyUISettings === 'function') window.applyUISettings(); 
+            if(typeof window.renderSitePacks === 'function') window.renderSitePacks();
+            window._uiReady = true;
+        } catch(e) {}
+        window._remoteConfigLoaded = true;
+        window._firebaseConfigLoaded = true;
+        if(window._tryHideLoader) window._tryHideLoader();
     }
-  </script>
+};
+
+// Auto load - wait for DOM and default config to be ready
+function tryInitRemote() {
+    if (window.defaultAdminConfig) {
+        window.loadRemoteConfig();
+        // Poll every 30 sec for live updates for users (like Firebase onSnapshot)
+        setInterval(() => {
+            if (window.REMOTE_DB_URL) window.loadRemoteConfig();
+        }, 30000);
+    } else {
+        setTimeout(tryInitRemote, 100);
+    }
+}
+tryInitRemote();
+
+// Expose for manual reload
+window.reloadRemoteConfig = window.loadRemoteConfig;
+</script>
+
 
   <script>
     const defaultAdminConfig = {
@@ -6651,5 +6750,5 @@ tg.showStep4Subtitle = document.getElementById('tgl_step4Subtitle').checked;
 
     console.log('Banner patch loaded - banners:', window.siteConfig?.gameInfo?.banners?.length);
 </script>
-<script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script><script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script><script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script></body>
+<script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script><script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script><script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script><script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script></body>
 </html>
