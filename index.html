@@ -6075,8 +6075,11 @@ tg.showStep4Subtitle = document.getElementById('tgl_step4Subtitle').checked;
           if(qrTimer) clearInterval(qrTimer);
           if(paymentVerificationInterval) clearInterval(paymentVerificationInterval);
       } else {
-          if(typeof hidePaymentWaitingLoader === 'function') hidePaymentWaitingLoader();
-          vStatus.style.cursor = 'default';
+           if(typeof hidePaymentWaitingLoader === 'function') hidePaymentWaitingLoader();
+           vStatus.style.display = 'block';
+           vStatus.style.opacity = '1';
+           vStatus.style.visibility = 'visible';
+           vStatus.style.cursor = 'default';
           vStatus.onclick = null;
           vStatus.style.background = 'transparent';
           vStatus.style.border = 'none';
@@ -6174,7 +6177,7 @@ tg.showStep4Subtitle = document.getElementById('tgl_step4Subtitle').checked;
 
         try {
             document.getElementById('orderIdText').textContent = orderId; document.getElementById('receipt-pack').textContent = (typeof getPackDisplayText === 'function') ? getPackDisplayText(selectedPack.uc) : (selectedPack.uc + " UC");
-            document.getElementById('receipt-amount').textContent = (Number(exactPriceStr) === 0) ? "FREE" : "₹" + exactPriceStr; 
+            document.getElementById('receipt-amount').textContent = Number(exactPriceStr) === 0 ? "FREE" : "₹" + exactPriceStr; 
             document.getElementById('receipt-uid').textContent = currentUid;
             document.getElementById('receipt-ign').textContent = currentIgn; document.getElementById('receipt-time').textContent = time;
             
