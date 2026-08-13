@@ -1454,7 +1454,7 @@
     #offlineScreen { touch-action: manipulation; }
 
     #payActionSubtitle { margin-top: 6px !important; }
-    #verificationStatus { display:none !important; }
+    #verificationStatus { display:none; }
     #topAmountDisplay { display:none !important; }
 
     
@@ -1574,7 +1574,7 @@
           </div>
         </div>
 
-        <div class="form-group" id="grpIgn" style="display:none !important;">
+        <div class="form-group" id="grpIgn" style="display:none;">
           <label class="form-label">
             <span id="dispLblIgnInput">BGMI ID Name (Auto-Filled)</span>
             <span style="color:var(--success); font-size:11px; margin-left:6px;"><i class="fa-solid fa-wand-magic-sparkles"></i> Auto</span>
@@ -1587,7 +1587,7 @@
           <div id="autoIgnHint" style="margin-top:6px; font-size:11px; color:var(--success); display:none;"><i class="fa-solid fa-circle-check"></i> <span id="autoIgnText"></span></div>
         </div>
 
-        <div class="btn-row" style="display:none !important;">
+        <div class="btn-row" style="display:none;">
           <button type="button" class="btn btn-primary" id="next1" disabled><span id="dispBtnVerify">Verify & Continue</span> <i class="fa-solid fa-arrow-right"></i></button>
         </div>
       </div>
@@ -2379,7 +2379,7 @@
               
               <label style="font-size:11px; color:#aaa; display:block; margin-top:10px;">Paid Packs Payment Info</label>
               <div class="flex-row-center"><input type="checkbox" id="tgl_step3Subnote" class="admin-toggle-box"><input type="text" class="form-input" id="adminTextStep3Subnote" placeholder="Complete your transaction." style="font-size:12px; padding:8px;"></div>
-              <div class="flex-row-center" style="display:none !important;"><input type="text" class="form-input" id="adminTextBtnPay" placeholder="PAY (Button Text)" style="font-size:12px; padding:8px; width:100%; margin-left: 26px;"></div> <!-- Hidden in v2: Pay buttons removed, amount only shown -->
+              <div class="flex-row-center" style="display:none;"><input type="text" class="form-input" id="adminTextBtnPay" placeholder="PAY (Button Text)" style="font-size:12px; padding:8px; width:100%; margin-left: 26px;"></div> <!-- Hidden in v2: Pay buttons removed, amount only shown -->
               
               <label style="font-size:11px; color:#aaa; display:block; margin-top:10px;">Lock UI (System Busy)</label>
               <div class="flex-row-center"><input type="text" class="form-input" id="adminTextLockTitle" placeholder="System Busy" style="font-size:12px; padding:8px; width:100%;"></div>
@@ -2694,7 +2694,8 @@ window.loadRemoteConfig = async function() {
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 6000);
             try {
-                const res = await fetch(url, { headers, cache: 'no-store', signal: controller.signal });
+                const bustedUrl = url + (url.includes('?') ? '&' : '?') + '_t=' + Date.now();
+                const res = await fetch(bustedUrl, { headers, cache: 'no-store', signal: controller.signal });
                 clearTimeout(timeout);
                 if (res.ok) {
                     const json = await res.json();
@@ -2726,11 +2727,9 @@ window.loadRemoteConfig = async function() {
             try { localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(dbConfig)); } catch(e){}
             console.log('✅ Remote config loaded');
         } else {
-            console.log('No remote config, using local/default');
-            if (window.REMOTE_DB_URL && window.siteConfig?.trialPacks?.length) {
-                // push local to remote first time
-                try { window.saveConfigToDB(window.siteConfig); } catch(e){}
-            }
+            console.log('No remote config, using local/default - NOT pushing local to remote to avoid reset on GitHub update');
+            // REMOVED auto-push to prevent reset when index.html changes on GitHub
+            // Remote will only be updated when admin explicitly saves via admin panel
         }
 
         // Apply UI safely
@@ -2775,12 +2774,17 @@ function tryInitRemote() {
                         if(res.ok){
                             const json = await res.json();
                             let cfg = json.config || json;
-                            if(cfg && cfg.trialPacks && JSON.stringify(cfg) !== JSON.stringify(window.siteConfig)){
-                                window.siteConfig = cfg;
-                                localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(cfg));
-                                if(window.applyUISettings) window.applyUISettings();
-                                if(window.renderSitePacks) window.renderSitePacks();
-                                console.log('🔄 Config auto-updated from remote');
+                            if(cfg && cfg.trialPacks){
+                                // Always check if packs changed - use length and price comparison for reliability
+                                const oldStr = JSON.stringify(window.siteConfig.trialPacks) + JSON.stringify(window.siteConfig.bulkPacks);
+                                const newStr = JSON.stringify(cfg.trialPacks) + JSON.stringify(cfg.bulkPacks);
+                                if(newStr !== oldStr || JSON.stringify(cfg) !== JSON.stringify(window.siteConfig)){
+                                    window.siteConfig = cfg;
+                                    try { localStorage.setItem('ucifyAdminConfigV2', JSON.stringify(cfg)); } catch(e){}
+                                    if(window.applyUISettings) window.applyUISettings();
+                                    if(window.renderSitePacks) window.renderSitePacks();
+                                    console.log('🔄 Config auto-updated from remote - packs updated for all users');
+                                }
                             }
                         }
                     } catch(e){}
@@ -4777,14 +4781,15 @@ tg.showStep4Subtitle = document.getElementById('tgl_step4Subtitle').checked;
       if(n1) n1.disabled = true;
       window._domReady = true;
 
-      // If we already have cached config (returning user), render it immediately to avoid blank screen,
-      // but still keep loader until Firebase confirms latest admin changes
+      // FIXED for Issue 4: Render cached config immediately to avoid blank, but DO NOT set _uiReady true yet
+      // Loader will stay until remote config is confirmed, ensuring all admin changes are loaded before site opens
       const hasCachedConfig = !!localStorage.getItem('ucifyAdminConfigV2');
       if(hasCachedConfig) {
           try { 
             if(typeof window.applyUISettings === 'function') window.applyUISettings(); 
             if(typeof window.renderSitePacks === 'function') window.renderSitePacks();
-            window._uiReady = true;
+            // window._uiReady stays false until remote config loads - this ensures loader waits for admin changes
+            console.log('Cached config rendered, waiting for remote confirmation before hiding loader...');
           } catch(e) {}
       }
       // Fallback: if Firebase fails / offline, render after 10s and hide loader (increased from 5.5s)
@@ -6090,13 +6095,23 @@ tg.showStep4Subtitle = document.getElementById('tgl_step4Subtitle').checked;
           `;
           const claimBtn = document.getElementById('claimPackBtn');
           if (claimBtn) claimBtn.onclick = handleRzpClick;
-          // Force show razorpayCard and its button for FREE pack even without links
+          // Force show claim UI for FREE pack even without any Razorpay link
           var rc = document.getElementById('razorpayCard');
-          if(rc) { rc.style.setProperty('display','block','important'); rc.style.display='block'; }
+          if(rc) { rc.style.setProperty('display','none','important'); } // hide razorpay card for free, we use dedicated claim
           var rrb = document.getElementById('rzpRedirectBtn');
-          if(rrb) { rrb.style.setProperty('display','flex','important'); rrb.style.display='flex'; }
+          if(rrb) { rrb.style.setProperty('display','none','important'); }
+          // SHOW bottomPayBtn as CLAIM PACK button for free pack - this is the main visible button in screenshot
           var bpb = document.getElementById('bottomPayBtn');
-          if(bpb) { bpb.style.setProperty('display','none','important'); }
+          if(bpb) { 
+              bpb.style.setProperty('display','flex','important'); 
+              bpb.style.display='flex';
+              bpb.innerHTML = '<i class="fas fa-gift"></i> CLAIM PACK';
+              bpb.disabled = false;
+              bpb.onclick = handleRzpClick;
+          }
+          // Also ensure back button is not full width when claim button exists
+          var backBtnEl = document.getElementById('back3');
+          if(backBtnEl) { backBtnEl.style.flex='1'; backBtnEl.style.width='auto'; }
       }
 
       btn.innerHTML = origText; btn.disabled = false;
