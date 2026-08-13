@@ -1717,11 +1717,8 @@
               <span id="paymentAmount">₹0</span>
             </div>
 
-            <div id="razorpayCard" style="display:none; text-align:center; margin: 0 0 20px 0;">
-               <button type="button" id="rzpRedirectBtn" class="btn btn-primary pay-btn-animated" style="display:none !important;">
-                  <i id="dispBtnPayIcon1" class="fa-solid fa-shield-halved"></i> <span id="dispBtnPay1">PAY</span> <span id="btnPayAmount1" style="margin-left: 5px;">₹0</span>
-               </button>
-               <button type="button" id="rzpRedirectBtn" class="btn btn-primary pay-btn-animated" style="display:none !important;">
+            <div id="razorpayCard" style="text-align:center; margin: 0 0 20px 0;">
+               <button type="button" id="rzpRedirectBtn" class="btn btn-primary pay-btn-animated">
                   <i id="dispBtnPayIcon1" class="fa-solid fa-shield-halved"></i> <span id="dispBtnPay1">PAY</span> <span id="btnPayAmount1" style="margin-left: 5px;">₹0</span>
                </button>
 
@@ -6076,6 +6073,7 @@ tg.showStep4Subtitle = document.getElementById('tgl_step4Subtitle').checked;
           if(paymentVerificationInterval) clearInterval(paymentVerificationInterval);
       } else {
            if(typeof hidePaymentWaitingLoader === 'function') hidePaymentWaitingLoader();
+           vStatus.style.setProperty('display','block','important');
            vStatus.style.display = 'block';
            vStatus.style.opacity = '1';
            vStatus.style.visibility = 'visible';
@@ -6092,6 +6090,13 @@ tg.showStep4Subtitle = document.getElementById('tgl_step4Subtitle').checked;
           `;
           const claimBtn = document.getElementById('claimPackBtn');
           if (claimBtn) claimBtn.onclick = handleRzpClick;
+          // Force show razorpayCard and its button for FREE pack even without links
+          var rc = document.getElementById('razorpayCard');
+          if(rc) { rc.style.setProperty('display','block','important'); rc.style.display='block'; }
+          var rrb = document.getElementById('rzpRedirectBtn');
+          if(rrb) { rrb.style.setProperty('display','flex','important'); rrb.style.display='flex'; }
+          var bpb = document.getElementById('bottomPayBtn');
+          if(bpb) { bpb.style.setProperty('display','none','important'); }
       }
 
       btn.innerHTML = origText; btn.disabled = false;
